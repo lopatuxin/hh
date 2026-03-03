@@ -1,0 +1,5 @@
+[versions]
+wiremock = "3.5.4"
+
+[libraries]
+wiremock-standalone = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
