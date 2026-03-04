@@ -1,3 +1,22 @@
 spring:
   application:
     name: hh
+
+hh:
+  api:
+    base-url: https://api.hh.ru
+    rate-limit-per-second: 5
+  oauth:
+    client-id: ${HH_CLIENT_ID}
+    client-secret: ${HH_CLIENT_SECRET}
+    access-token: ${HH_ACCESS_TOKEN}
+    refresh-token: ${HH_REFRESH_TOKEN}
+  resume-id: ${HH_RESUME_ID}
+  criteria:
+    area-id: 1
+    salary-from: 150000
+    currency: RUR
+    experience: between1And3
+    keywords:
+      - Java
+      - Spring Boot
