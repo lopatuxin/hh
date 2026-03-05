@@ -1,4 +1,4 @@
-package pyc.lopatuxin.hh.apply.infrastructure.hh;
+package pyc.lopatuxin.hh.apply.infrastructure.hh.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;

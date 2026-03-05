@@ -3,6 +3,7 @@ package pyc.lopatuxin.hh.apply.infrastructure.hh;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pyc.lopatuxin.hh.apply.infrastructure.hh.client.HhOAuthClient;
 import pyc.lopatuxin.hh.apply.infrastructure.hh.dto.OAuthResponse;
 import pyc.lopatuxin.hh.config.HhProperties;
 
