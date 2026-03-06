@@ -12,11 +12,3 @@ hh:
     access-token: ${HH_ACCESS_TOKEN}
     refresh-token: ${HH_REFRESH_TOKEN}
   resume-id: ${HH_RESUME_ID}
-  criteria:
-    area-id: 1
-    salary-from: 150000
-    currency: RUR
-    experience: between1And3
-    keywords:
-      - Java
-      - Spring Boot

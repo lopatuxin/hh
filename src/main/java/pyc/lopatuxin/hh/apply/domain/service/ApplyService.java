@@ -1,5 +1,6 @@
 package pyc.lopatuxin.hh.apply.domain.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ApplyService implements ApplyUseCase {
 
     private final VacancyPort vacancyPort;
@@ -22,16 +24,6 @@ public class ApplyService implements ApplyUseCase {
     private final ApplyHistoryPort historyPort;
     private final VacancyFilter vacancyFilter;
     private final AtomicBoolean running = new AtomicBoolean(false);
-
-    public ApplyService(VacancyPort vacancyPort,
-                        NegotiationPort negotiationPort,
-                        ApplyHistoryPort historyPort,
-                        VacancyFilter vacancyFilter) {
-        this.vacancyPort = vacancyPort;
-        this.negotiationPort = negotiationPort;
-        this.historyPort = historyPort;
-        this.vacancyFilter = vacancyFilter;
-    }
 
     @Override
     public ApplyResult run(ApplyCriteria criteria) {
