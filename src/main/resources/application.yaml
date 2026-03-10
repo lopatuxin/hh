@@ -1,14 +1,21 @@
 spring:
   application:
     name: hh
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/hh}
+    username: ${DB_USERNAME:hh}
+    password: ${DB_PASSWORD:hh}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
 
 hh:
-  api:
-    base-url: https://api.hh.ru
-    rate-limit-per-second: 5
-  oauth:
-    client-id: ${HH_CLIENT_ID}
-    client-secret: ${HH_CLIENT_SECRET}
-    access-token: ${HH_ACCESS_TOKEN}
-    refresh-token: ${HH_REFRESH_TOKEN}
   resume-id: ${HH_RESUME_ID}
+  browser:
+    auth-state-path: auth.json
+    headless: true
+    delay-min-ms: 10000
+    delay-max-ms: 45000
+    max-per-day: 50
