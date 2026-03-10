@@ -6,6 +6,10 @@ import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 public class VacancyFilter {
 
     public boolean matches(Vacancy vacancy, ApplyCriteria criteria) {
+        if (vacancy.requiresCoverLetter()) {
+            return false;
+        }
+
         if (!salaryMatches(vacancy, criteria)) {
             return false;
         }

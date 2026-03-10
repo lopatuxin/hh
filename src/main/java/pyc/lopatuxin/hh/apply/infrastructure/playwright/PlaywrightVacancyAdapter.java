@@ -1,0 +1,194 @@
+package pyc.lopatuxin.hh.apply.infrastructure.playwright;
+
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
+import pyc.lopatuxin.hh.apply.domain.model.Salary;
+import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
+import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
+import pyc.lopatuxin.hh.config.HhProperties;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Slf4j
+@Primary
+@Component
+@RequiredArgsConstructor
+public class PlaywrightVacancyAdapter implements VacancyPort {
+
+    private static final String SEARCH_URL = "https://hh.ru/search/vacancy";
+    private static final Pattern VACANCY_ID_PATTERN = Pattern.compile("/vacancy/(\\d+)");
+    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d[\\d\\u00a0\\s]*\\d|\\d");
+
+    private final Browser browser;
+    private final HhProperties properties;
+
+    @Override
+    public List<Vacancy> search(ApplyCriteria criteria) {
+        try (BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
+
+            Page page = context.newPage();
+
+            List<String> ids = collectVacancyIds(page, criteria);
+            log.info("Собрано {} ID вакансий со страниц поиска", ids.size());
+
+            List<Vacancy> result = new ArrayList<>();
+            for (String id : ids) {
+                Vacancy vacancy = fetchVacancyDetails(page, id);
+                if (vacancy != null) {
+                    result.add(vacancy);
+                }
+            }
+            log.info("Загружено {} вакансий", result.size());
+            return result;
+        }
+    }
+
+    private List<String> collectVacancyIds(Page page, ApplyCriteria criteria) {
+        List<String> ids = new ArrayList<>();
+        int pageNum = 0;
+
+        while (true) {
+            String url = buildSearchUrl(criteria, pageNum);
+            log.info("Открываю страницу поиска #{}: {}", pageNum + 1, url);
+            page.navigate(url);
+            checkCaptcha(page);
+
+            List<Locator> cards = page.locator("[data-qa='vacancy-serp__vacancy']").all();
+            for (Locator card : cards) {
+                Locator titleLink = card.locator("a[data-qa='serp-item__title']");
+                if (titleLink.count() == 0) continue;
+                String href = titleLink.getAttribute("href");
+                String id = extractVacancyId(href);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+
+            Locator nextPageBtn = page.locator("[data-qa='pager-next']");
+            if (nextPageBtn.count() == 0 || !nextPageBtn.isVisible()) break;
+            pageNum++;
+        }
+
+        return ids;
+    }
+
+    private Vacancy fetchVacancyDetails(Page page, String id) {
+        String url = "https://hh.ru/vacancy/" + id;
+        log.debug("Загружаю детали вакансии {}", url);
+        page.navigate(url);
+        checkCaptcha(page);
+
+        Locator titleLocator = page.locator("[data-qa='vacancy-title']");
+        String title = titleLocator.count() > 0 ? titleLocator.textContent().trim() : "";
+
+        Salary salary = parseSalary(page);
+        String area = getTextOrNull(page, "[data-qa='vacancy-view-location']");
+        String experience = getTextOrNull(page, "[data-qa='vacancy-experience']");
+
+        List<String> keySkills = page.locator("[data-qa='bloko-tag__text']")
+                .all().stream()
+                .map(l -> l.textContent().trim())
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        boolean requiresCoverLetter =
+                page.locator("[data-qa='vacancy-response-letter-required']").count() > 0;
+
+        log.debug("Вакансия {}: '{}', сопроводительное обязательно: {}", id, title, requiresCoverLetter);
+        return new Vacancy(id, title, salary, area, experience, keySkills, requiresCoverLetter);
+    }
+
+    private String buildSearchUrl(ApplyCriteria criteria, int page) {
+        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=50");
+
+        if (criteria.keywords() != null && !criteria.keywords().isEmpty()) {
+            String text = criteria.keywords().stream()
+                    .map(kw -> URLEncoder.encode(kw, StandardCharsets.UTF_8))
+                    .reduce((a, b) -> a + "+" + b)
+                    .orElse("");
+            url.append("&text=").append(text);
+        }
+        if (criteria.areaId() > 0) {
+            url.append("&area=").append(criteria.areaId());
+        }
+        if (criteria.salaryFrom() > 0) {
+            url.append("&salary=").append(criteria.salaryFrom());
+        }
+        if (criteria.currency() != null) {
+            url.append("&currency_code=").append(criteria.currency());
+        }
+        if (criteria.experience() != null) {
+            url.append("&experience=").append(criteria.experience());
+        }
+        if (page > 0) {
+            url.append("&page=").append(page);
+        }
+
+        return url.toString();
+    }
+
+    private void checkCaptcha(Page page) {
+        if (page.url().contains("captcha")
+                || page.locator("[data-qa='captcha']").count() > 0) {
+            throw new CaptchaException("Обнаружена капча, страница: " + page.url());
+        }
+    }
+
+    private Salary parseSalary(Page page) {
+        Locator salaryLocator = page.locator("[data-qa='vacancy-salary']");
+        if (salaryLocator.count() == 0) return null;
+
+        String text = salaryLocator.textContent();
+        if (text == null || text.isBlank()) return null;
+
+        List<Integer> numbers = new ArrayList<>();
+        Matcher m = NUMBER_PATTERN.matcher(text);
+        while (m.find()) {
+            String numStr = m.group().replaceAll("[\\u00a0\\s]", "");
+            try {
+                numbers.add(Integer.parseInt(numStr));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        String currency = null;
+        if (text.contains("руб") || text.contains("₽")) currency = "RUR";
+        else if (text.contains("USD") || text.contains("$")) currency = "USD";
+        else if (text.contains("EUR") || text.contains("€")) currency = "EUR";
+
+        return switch (numbers.size()) {
+            case 0 -> null;
+            case 1 -> text.contains("до") ? new Salary(null, numbers.get(0), currency)
+                                           : new Salary(numbers.get(0), null, currency);
+            default -> new Salary(numbers.get(0), numbers.get(1), currency);
+        };
+    }
+
+    private String getTextOrNull(Page page, String selector) {
+        Locator locator = page.locator(selector);
+        if (locator.count() == 0) return null;
+        String text = locator.first().textContent();
+        return text != null && !text.isBlank() ? text.trim() : null;
+    }
+
+    private String extractVacancyId(String href) {
+        if (href == null) return null;
+        Matcher m = VACANCY_ID_PATTERN.matcher(href);
+        return m.find() ? m.group(1) : null;
+    }
+}

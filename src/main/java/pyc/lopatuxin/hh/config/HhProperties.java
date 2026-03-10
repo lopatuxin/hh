@@ -7,19 +7,14 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties("hh")
 @Validated
 public record HhProperties(
-        Api api,
-        Oauth oauth,
+        Browser browser,
         @NotBlank String resumeId
 ) {
-    public record Api(
-            String baseUrl,
-            int rateLimitPerSecond
-    ) {}
-
-    public record Oauth(
-            String clientId,
-            String clientSecret,
-            String accessToken,
-            String refreshToken
+    public record Browser(
+            String authStatePath,
+            boolean headless,
+            long delayMinMs,
+            long delayMaxMs,
+            int maxPerDay
     ) {}
 }

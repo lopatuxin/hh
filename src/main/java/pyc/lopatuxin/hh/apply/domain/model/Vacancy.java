@@ -8,6 +8,7 @@ public record Vacancy(
         Salary salary,
         String area,
         String experience,
-        List<String> keySkills
+        List<String> keySkills,
+        boolean requiresCoverLetter
 ) {
 }
