@@ -47,7 +47,7 @@ public class ApplyService implements ApplyUseCase {
                 } else {
                     try {
                         negotiationPort.apply(vacancy.id());
-                        historyPort.markApplied(vacancy.id());
+                        historyPort.markApplied(vacancy.id(), vacancy.company());
                         applied++;
                     } catch (Exception e) {
                         log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());

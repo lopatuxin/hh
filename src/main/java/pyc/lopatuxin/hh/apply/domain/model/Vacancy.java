@@ -5,6 +5,7 @@ import java.util.List;
 public record Vacancy(
         String id,
         String title,
+        String company,
         Salary salary,
         String area,
         String experience,

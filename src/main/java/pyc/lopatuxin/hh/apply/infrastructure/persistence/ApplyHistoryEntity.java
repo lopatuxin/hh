@@ -19,6 +19,9 @@ public class ApplyHistoryEntity {
     @Column(name = "vacancy_id")
     private String vacancyId;
 
+    @Column(name = "company")
+    private String company;
+
     @Column(name = "applied_at", nullable = false)
     private Instant appliedAt;
 }

@@ -96,6 +96,8 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         Locator titleLocator = page.locator("[data-qa='vacancy-title']");
         String title = titleLocator.count() > 0 ? titleLocator.textContent().trim() : "";
 
+        String company = getTextOrNull(page, "[data-qa='vacancy-company-name']");
+
         Salary salary = parseSalary(page);
         String area = getTextOrNull(page, "[data-qa='vacancy-view-location']");
         String experience = getTextOrNull(page, "[data-qa='vacancy-experience']");
@@ -109,8 +111,8 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         boolean requiresCoverLetter =
                 page.locator("[data-qa='vacancy-response-letter-required']").count() > 0;
 
-        log.debug("Вакансия {}: '{}', сопроводительное обязательно: {}", id, title, requiresCoverLetter);
-        return new Vacancy(id, title, salary, area, experience, keySkills, requiresCoverLetter);
+        log.debug("Вакансия {}: '{}', компания: '{}', сопроводительное обязательно: {}", id, title, company, requiresCoverLetter);
+        return new Vacancy(id, title, company, salary, area, experience, keySkills, requiresCoverLetter);
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {

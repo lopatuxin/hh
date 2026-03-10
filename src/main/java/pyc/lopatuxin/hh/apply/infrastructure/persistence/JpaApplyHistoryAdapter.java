@@ -18,9 +18,9 @@ public class JpaApplyHistoryAdapter implements ApplyHistoryPort {
     }
 
     @Override
-    public void markApplied(String vacancyId) {
+    public void markApplied(String vacancyId, String company) {
         if (!repository.existsById(vacancyId)) {
-            repository.save(new ApplyHistoryEntity(vacancyId, Instant.now()));
+            repository.save(new ApplyHistoryEntity(vacancyId, company, Instant.now()));
         }
     }
 }
