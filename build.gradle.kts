@@ -24,7 +24,7 @@ dependencies {
     implementation("com.microsoft.playwright:playwright:1.51.0")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    implementation("org.flywaydb:flyway-core")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
