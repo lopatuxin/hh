@@ -122,7 +122,8 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
-        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=50");
+        int perPage = Math.min(50, Math.max(10, criteria.limit() * 2));
+        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=").append(perPage);
 
         if (criteria.keywords() != null && !criteria.keywords().isEmpty()) {
             String text = criteria.keywords().stream()
