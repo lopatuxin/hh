@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
 import pyc.lopatuxin.hh.apply.domain.model.Salary;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
+import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
 import pyc.lopatuxin.hh.config.HhProperties;
 
@@ -111,8 +112,10 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         boolean requiresCoverLetter =
                 page.locator("[data-qa='vacancy-response-letter-required']").count() > 0;
 
-        log.debug("Вакансия {}: '{}', компания: '{}', сопроводительное обязательно: {}", id, title, company, requiresCoverLetter);
-        return new Vacancy(id, title, company, salary, area, experience, keySkills, requiresCoverLetter);
+        WorkFormat workFormat = parseWorkFormat(page);
+
+        log.debug("Вакансия {}: '{}', компания: '{}', формат: {}, сопроводительное обязательно: {}", id, title, company, workFormat, requiresCoverLetter);
+        return new Vacancy(id, title, company, salary, area, experience, keySkills, requiresCoverLetter, workFormat);
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
@@ -179,6 +182,25 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
                                            : new Salary(numbers.get(0), null, currency);
             default -> new Salary(numbers.get(0), numbers.get(1), currency);
         };
+    }
+
+    private WorkFormat parseWorkFormat(Page page) {
+        List<Locator> items = page.locator("[data-qa='vacancy-view-schedule-list'] li").all();
+        for (Locator item : items) {
+            String text = item.textContent();
+            if (text == null) continue;
+            String lower = text.toLowerCase();
+            if (lower.contains("удалённ") || lower.contains("удаленн")) {
+                return WorkFormat.REMOTE;
+            }
+            if (lower.contains("гибрид")) {
+                return WorkFormat.HYBRID;
+            }
+            if (lower.contains("на месте работодателя")) {
+                return WorkFormat.OFFICE;
+            }
+        }
+        return null;
     }
 
     private String getTextOrNull(Page page, String selector) {

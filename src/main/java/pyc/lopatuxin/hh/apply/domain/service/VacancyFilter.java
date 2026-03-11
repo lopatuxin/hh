@@ -2,6 +2,9 @@ package pyc.lopatuxin.hh.apply.domain.service;
 
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
+import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
+
+import java.util.List;
 
 public class VacancyFilter {
 
@@ -11,6 +14,10 @@ public class VacancyFilter {
         }
 
         if (isCompanyExcluded(vacancy, criteria)) {
+            return false;
+        }
+
+        if (!workFormatMatches(vacancy, criteria)) {
             return false;
         }
 
@@ -24,6 +31,17 @@ public class VacancyFilter {
         }
 
         return keywordsMatch(vacancy, criteria);
+    }
+
+    private boolean workFormatMatches(Vacancy vacancy, ApplyCriteria criteria) {
+        List<WorkFormat> wanted = criteria.workFormats();
+        if (wanted == null || wanted.isEmpty()) {
+            return true;
+        }
+        if (vacancy.workFormat() == null) {
+            return true;
+        }
+        return wanted.contains(vacancy.workFormat());
     }
 
     private boolean isCompanyExcluded(Vacancy vacancy, ApplyCriteria criteria) {

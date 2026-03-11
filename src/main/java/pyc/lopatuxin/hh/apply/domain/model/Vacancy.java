@@ -10,6 +10,7 @@ public record Vacancy(
         String area,
         String experience,
         List<String> keySkills,
-        boolean requiresCoverLetter
+        boolean requiresCoverLetter,
+        WorkFormat workFormat
 ) {
 }
