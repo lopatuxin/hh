@@ -9,6 +9,7 @@ public record ApplyCriteria(
         String experience,
         List<String> keywords,
         List<String> excludedCompanies,
-        List<WorkFormat> workFormats
+        List<WorkFormat> workFormats,
+        int limit
 ) {
 }

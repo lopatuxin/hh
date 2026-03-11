@@ -45,6 +45,10 @@ public class ApplyService implements ApplyUseCase {
                     log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
                     skipped++;
                 } else {
+                    if (criteria.limit() > 0 && applied >= criteria.limit()) {
+                        log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
+                        break;
+                    }
                     try {
                         negotiationPort.apply(vacancy.id());
                         historyPort.markApplied(vacancy.id(), vacancy.company());
