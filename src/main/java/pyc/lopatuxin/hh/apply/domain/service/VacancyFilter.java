@@ -30,7 +30,7 @@ public class VacancyFilter {
             return false;
         }
 
-        return keywordsMatch(vacancy, criteria);
+        return true;
     }
 
     private boolean workFormatMatches(Vacancy vacancy, ApplyCriteria criteria) {
@@ -65,16 +65,4 @@ public class VacancyFilter {
         return salaryValue == null || salaryValue >= criteria.salaryFrom();
     }
 
-    private boolean keywordsMatch(Vacancy vacancy, ApplyCriteria criteria) {
-        if (criteria.keywords() == null || criteria.keywords().isEmpty()) {
-            return true;
-        }
-        boolean matchesTitle = criteria.keywords().stream()
-                .anyMatch(kw -> vacancy.title().toLowerCase().contains(kw.toLowerCase()));
-        boolean matchesSkills = vacancy.keySkills() != null
-                && criteria.keywords().stream()
-                .anyMatch(kw -> vacancy.keySkills().stream()
-                        .anyMatch(skill -> skill.equalsIgnoreCase(kw)));
-        return matchesTitle || matchesSkills;
-    }
 }
