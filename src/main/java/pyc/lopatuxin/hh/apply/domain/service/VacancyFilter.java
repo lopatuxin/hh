@@ -10,6 +10,10 @@ public class VacancyFilter {
             return false;
         }
 
+        if (isCompanyExcluded(vacancy, criteria)) {
+            return false;
+        }
+
         if (!salaryMatches(vacancy, criteria)) {
             return false;
         }
@@ -20,6 +24,17 @@ public class VacancyFilter {
         }
 
         return keywordsMatch(vacancy, criteria);
+    }
+
+    private boolean isCompanyExcluded(Vacancy vacancy, ApplyCriteria criteria) {
+        if (criteria.excludedCompanies() == null || criteria.excludedCompanies().isEmpty()) {
+            return false;
+        }
+        if (vacancy.company() == null) {
+            return false;
+        }
+        return criteria.excludedCompanies().stream()
+                .anyMatch(excluded -> vacancy.company().toLowerCase().contains(excluded.toLowerCase()));
     }
 
     private boolean salaryMatches(Vacancy vacancy, ApplyCriteria criteria) {

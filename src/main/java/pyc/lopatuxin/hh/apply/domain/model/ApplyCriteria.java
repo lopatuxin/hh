@@ -7,6 +7,7 @@ public record ApplyCriteria(
         int salaryFrom,
         String currency,
         String experience,
-        List<String> keywords
+        List<String> keywords,
+        List<String> excludedCompanies
 ) {
 }
