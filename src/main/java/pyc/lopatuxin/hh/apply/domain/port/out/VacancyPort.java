@@ -6,5 +6,6 @@ import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import java.util.List;
 
 public interface VacancyPort {
-    List<Vacancy> search(ApplyCriteria criteria);
+    List<String> collectIds(ApplyCriteria criteria, int page);
+    List<Vacancy> fetchDetails(List<String> ids);
 }

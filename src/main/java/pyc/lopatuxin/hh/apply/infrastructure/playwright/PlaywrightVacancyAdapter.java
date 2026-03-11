@@ -4,6 +4,7 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.WaitUntilState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
@@ -37,22 +38,28 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     private final HhProperties properties;
 
     @Override
-    public List<Vacancy> search(ApplyCriteria criteria) {
+    public List<String> collectIds(ApplyCriteria criteria) {
         try (BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
 
             Page page = context.newPage();
-
             List<String> ids = collectVacancyIds(page, criteria);
             log.info("Собрано {} ID вакансий со страниц поиска", ids.size());
+            return ids;
+        }
+    }
 
+    @Override
+    public List<Vacancy> fetchDetails(List<String> ids) {
+        try (BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
+
+            Page page = context.newPage();
             List<Vacancy> result = new ArrayList<>();
             for (String id : ids) {
-                Vacancy vacancy = fetchVacancyDetails(page, id);
-                if (vacancy != null) {
-                    result.add(vacancy);
-                }
+                result.add(fetchVacancyDetails(page, id));
             }
             log.info("Загружено {} вакансий", result.size());
             return result;
@@ -66,11 +73,18 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         while (true) {
             String url = buildSearchUrl(criteria, pageNum);
             log.info("Открываю страницу поиска #{}: {}", pageNum + 1, url);
-            page.navigate(url);
+            page.navigate(url, new Page.NavigateOptions()
+                    .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                    .setTimeout(60000));
             checkCaptcha(page);
 
             List<Locator> cards = page.locator("[data-qa='vacancy-serp__vacancy']").all();
+            boolean firstCard = true;
             for (Locator card : cards) {
+                if (firstCard) {
+                    log.debug("HTML карточки: {}", card.innerHTML());
+                    firstCard = false;
+                }
                 Locator titleLink = card.locator("a[data-qa='serp-item__title']");
                 if (titleLink.count() == 0) continue;
                 String href = titleLink.getAttribute("href");
@@ -90,8 +104,10 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
 
     private Vacancy fetchVacancyDetails(Page page, String id) {
         String url = "https://hh.ru/vacancy/" + id;
-        log.debug("Загружаю детали вакансии {}", url);
-        page.navigate(url);
+        log.info("Загружаю детали вакансии {}", url);
+        page.navigate(url, new Page.NavigateOptions()
+                .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                .setTimeout(60000));
         checkCaptcha(page);
 
         Locator titleLocator = page.locator("[data-qa='vacancy-title']");
@@ -114,7 +130,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
 
         WorkFormat workFormat = parseWorkFormat(page);
 
-        log.debug("Вакансия {}: '{}', компания: '{}', формат: {}, сопроводительное обязательно: {}", id, title, company, workFormat, requiresCoverLetter);
+        log.info("Вакансия {}: '{}', компания: '{}', формат: {}, сопроводительное обязательно: {}", id, title, company, workFormat, requiresCoverLetter);
         return new Vacancy(id, title, company, salary, area, experience, keySkills, requiresCoverLetter, workFormat);
     }
 
@@ -168,6 +184,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
             try {
                 numbers.add(Integer.parseInt(numStr));
             } catch (NumberFormatException ignored) {
+                // нечисловые токены пропускаем
             }
         }
 
@@ -179,26 +196,27 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         return switch (numbers.size()) {
             case 0 -> null;
             case 1 -> text.contains("до") ? new Salary(null, numbers.get(0), currency)
-                                           : new Salary(numbers.get(0), null, currency);
+                    : new Salary(numbers.get(0), null, currency);
             default -> new Salary(numbers.get(0), numbers.get(1), currency);
         };
     }
 
     private WorkFormat parseWorkFormat(Page page) {
-        List<Locator> items = page.locator("[data-qa='vacancy-view-schedule-list'] li").all();
-        for (Locator item : items) {
-            String text = item.textContent();
-            if (text == null) continue;
-            String lower = text.toLowerCase();
-            if (lower.contains("удалённ") || lower.contains("удаленн")) {
+        Locator workFormatsLocator = page.locator("[data-qa='work-formats-text']");
+        if (workFormatsLocator.count() > 0) {
+            String text = workFormatsLocator.textContent().replace('\u00a0', ' ').toLowerCase();
+            if (text.contains("удалённ") || text.contains("удаленн")) {
                 return WorkFormat.REMOTE;
             }
-            if (lower.contains("гибрид")) {
+            if (text.contains("гибрид")) {
                 return WorkFormat.HYBRID;
             }
-            if (lower.contains("на месте работодателя")) {
+            if (text.contains("офис") || text.contains("на месте")) {
                 return WorkFormat.OFFICE;
             }
+        }
+        if (page.locator("[data-qa='vacancy-label-work-schedule-remote']").count() > 0) {
+            return WorkFormat.REMOTE;
         }
         return null;
     }

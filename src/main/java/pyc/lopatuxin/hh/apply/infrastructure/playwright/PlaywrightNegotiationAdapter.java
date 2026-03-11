@@ -7,6 +7,7 @@ import com.microsoft.playwright.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import pyc.lopatuxin.hh.apply.domain.model.SessionExpiredException;
 import pyc.lopatuxin.hh.apply.domain.port.out.NegotiationPort;
 import pyc.lopatuxin.hh.config.HhProperties;
 
@@ -34,6 +35,9 @@ public class PlaywrightNegotiationAdapter implements NegotiationPort {
             if (page.url().contains("captcha") || page.locator("[data-qa='captcha']").count() > 0) {
                 throw new CaptchaException("Обнаружена капча на вакансии " + vacancyId);
             }
+            if (page.url().contains("/login") || page.url().contains("/account/login")) {
+                throw new SessionExpiredException("Сессия истекла, необходима повторная авторизация");
+            }
 
             Locator applyButton = page.locator("[data-qa='vacancy-response-link-top']");
             if (applyButton.count() == 0) {
@@ -46,12 +50,10 @@ public class PlaywrightNegotiationAdapter implements NegotiationPort {
             applyButton.first().click();
             log.debug("Нажал кнопку отклика на вакансию {}", vacancyId);
 
-            Locator submitButton = page.locator("[data-qa='vacancy-response-letter-submit']");
-            if (submitButton.count() > 0 && submitButton.isVisible()) {
-                submitButton.click();
-                log.debug("Подтвердил отклик на вакансию {}", vacancyId);
-            }
-
+            page.waitForSelector("[data-qa='vacancy-response-link-top'], [data-qa='vacancy-response-link-bottom']",
+                    new Page.WaitForSelectorOptions()
+                            .setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN)
+                            .setTimeout(15000));
             log.info("Успешно откликнулся на вакансию {}", vacancyId);
         }
     }
