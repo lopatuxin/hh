@@ -38,14 +38,37 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     private final HhProperties properties;
 
     @Override
-    public List<String> collectIds(ApplyCriteria criteria) {
+    public List<String> collectIds(ApplyCriteria criteria, int page) {
         try (BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
 
-            Page page = context.newPage();
-            List<String> ids = collectVacancyIds(page, criteria);
-            log.info("Собрано {} ID вакансий со страниц поиска", ids.size());
+            Page browserPage = context.newPage();
+            String url = buildSearchUrl(criteria, page);
+            log.info("Открываю страницу поиска #{}: {}", page + 1, url);
+            browserPage.navigate(url, new Page.NavigateOptions()
+                    .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                    .setTimeout(60000));
+            checkCaptcha(browserPage);
+
+            List<String> ids = new ArrayList<>();
+            List<Locator> cards = browserPage.locator("[data-qa='vacancy-serp__vacancy']").all();
+            boolean firstCard = true;
+            for (Locator card : cards) {
+                if (firstCard) {
+                    log.debug("HTML карточки: {}", card.innerHTML());
+                    firstCard = false;
+                }
+                Locator titleLink = card.locator("a[data-qa='serp-item__title']");
+                if (titleLink.count() == 0) continue;
+                String href = titleLink.getAttribute("href");
+                String id = extractVacancyId(href);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+
+            log.info("Страница {}: собрано {} ID вакансий", page + 1, ids.size());
             return ids;
         }
     }
@@ -64,42 +87,6 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
             log.info("Загружено {} вакансий", result.size());
             return result;
         }
-    }
-
-    private List<String> collectVacancyIds(Page page, ApplyCriteria criteria) {
-        List<String> ids = new ArrayList<>();
-        int pageNum = 0;
-
-        while (true) {
-            String url = buildSearchUrl(criteria, pageNum);
-            log.info("Открываю страницу поиска #{}: {}", pageNum + 1, url);
-            page.navigate(url, new Page.NavigateOptions()
-                    .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                    .setTimeout(60000));
-            checkCaptcha(page);
-
-            List<Locator> cards = page.locator("[data-qa='vacancy-serp__vacancy']").all();
-            boolean firstCard = true;
-            for (Locator card : cards) {
-                if (firstCard) {
-                    log.debug("HTML карточки: {}", card.innerHTML());
-                    firstCard = false;
-                }
-                Locator titleLink = card.locator("a[data-qa='serp-item__title']");
-                if (titleLink.count() == 0) continue;
-                String href = titleLink.getAttribute("href");
-                String id = extractVacancyId(href);
-                if (id != null) {
-                    ids.add(id);
-                }
-            }
-
-            Locator nextPageBtn = page.locator("[data-qa='pager-next']");
-            if (nextPageBtn.count() == 0 || !nextPageBtn.isVisible()) break;
-            pageNum++;
-        }
-
-        return ids;
     }
 
     private Vacancy fetchVacancyDetails(Page page, String id) {
