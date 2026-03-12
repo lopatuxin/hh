@@ -9,7 +9,11 @@ import java.util.List;
 public class VacancyFilter {
 
     public boolean matches(Vacancy vacancy, ApplyCriteria criteria) {
-        if (!titleContainsRequiredWords(vacancy, criteria)) {
+        if (!titleMatchesGroups(vacancy, criteria)) {
+            return false;
+        }
+
+        if (titleContainsExcludedWords(vacancy, criteria)) {
             return false;
         }
 
@@ -37,16 +41,30 @@ public class VacancyFilter {
         return true;
     }
 
-    private boolean titleContainsRequiredWords(Vacancy vacancy, ApplyCriteria criteria) {
-        List<String> required = criteria.requiredTitleWords();
-        if (required == null || required.isEmpty()) {
+    private boolean titleMatchesGroups(Vacancy vacancy, ApplyCriteria criteria) {
+        List<List<String>> groups = criteria.requiredTitleGroups();
+        if (groups == null || groups.isEmpty()) {
             return true;
         }
         if (vacancy.title() == null || vacancy.title().isBlank()) {
             return false;
         }
         String titleLower = vacancy.title().toLowerCase();
-        return required.stream()
+        return groups.stream()
+                .allMatch(group -> group.stream()
+                        .anyMatch(word -> titleLower.contains(word.toLowerCase())));
+    }
+
+    private boolean titleContainsExcludedWords(Vacancy vacancy, ApplyCriteria criteria) {
+        List<String> excluded = criteria.excludedTitleWords();
+        if (excluded == null || excluded.isEmpty()) {
+            return false;
+        }
+        if (vacancy.title() == null || vacancy.title().isBlank()) {
+            return false;
+        }
+        String titleLower = vacancy.title().toLowerCase();
+        return excluded.stream()
                 .anyMatch(word -> titleLower.contains(word.toLowerCase()));
     }
 
