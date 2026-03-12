@@ -9,6 +9,10 @@ import java.util.List;
 public class VacancyFilter {
 
     public boolean matches(Vacancy vacancy, ApplyCriteria criteria) {
+        if (!titleContainsRequiredWords(vacancy, criteria)) {
+            return false;
+        }
+
         if (vacancy.requiresCoverLetter()) {
             return false;
         }
@@ -31,6 +35,19 @@ public class VacancyFilter {
         }
 
         return true;
+    }
+
+    private boolean titleContainsRequiredWords(Vacancy vacancy, ApplyCriteria criteria) {
+        List<String> required = criteria.requiredTitleWords();
+        if (required == null || required.isEmpty()) {
+            return true;
+        }
+        if (vacancy.title() == null || vacancy.title().isBlank()) {
+            return false;
+        }
+        String titleLower = vacancy.title().toLowerCase();
+        return required.stream()
+                .anyMatch(word -> titleLower.contains(word.toLowerCase()));
     }
 
     private boolean workFormatMatches(Vacancy vacancy, ApplyCriteria criteria) {

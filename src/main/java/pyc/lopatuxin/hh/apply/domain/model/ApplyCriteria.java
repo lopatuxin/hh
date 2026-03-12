@@ -10,6 +10,7 @@ public record ApplyCriteria(
         List<String> keywords,
         List<String> excludedCompanies,
         List<WorkFormat> workFormats,
+        List<String> requiredTitleWords,
         int limit
 ) {
 }
