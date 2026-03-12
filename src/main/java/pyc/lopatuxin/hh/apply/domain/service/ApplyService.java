@@ -69,6 +69,8 @@ public class ApplyService implements ApplyUseCase {
                     found++;
                     if (!vacancyFilter.matches(vacancy, criteria)) {
                         log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
+                        historyPort.markFiltered(vacancy.id(), vacancy.company());
+                        excludeIds.add(vacancy.id());
                         skipped++;
                         continue;
                     }
