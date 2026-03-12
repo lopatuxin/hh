@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface VacancyPort {
     List<String> collectIds(ApplyCriteria criteria, int page);
+    Vacancy fetchDetail(String id);
     List<Vacancy> fetchDetails(List<String> ids);
 }

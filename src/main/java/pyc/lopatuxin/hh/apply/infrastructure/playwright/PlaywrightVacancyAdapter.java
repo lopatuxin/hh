@@ -74,6 +74,16 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     @Override
+    public Vacancy fetchDetail(String id) {
+        try (BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
+            Page page = context.newPage();
+            return fetchVacancyDetails(page, id);
+        }
+    }
+
+    @Override
     public List<Vacancy> fetchDetails(List<String> ids) {
         try (BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
@@ -122,8 +132,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
-        int perPage = Math.min(50, Math.max(10, criteria.limit() * 2));
-        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=").append(perPage);
+        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=50");
 
         if (criteria.keywords() != null && !criteria.keywords().isEmpty()) {
             String text = criteria.keywords().stream()

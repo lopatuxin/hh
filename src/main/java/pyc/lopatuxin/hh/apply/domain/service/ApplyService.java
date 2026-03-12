@@ -53,32 +53,29 @@ public class ApplyService implements ApplyUseCase {
                         .toList();
                 log.info("Страница {}: всего {}, новых {}", page, rawPageIds.size(), newIds.size());
 
-                if (!newIds.isEmpty()) {
-                    List<Vacancy> vacancies = vacancyPort.fetchDetails(newIds);
-                    found += vacancies.size();
-
-                    for (Vacancy vacancy : vacancies) {
-                        if (applied >= criteria.limit()) {
-                            log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
-                            break;
-                        }
-                        if (!vacancyFilter.matches(vacancy, criteria)) {
-                            log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
-                            skipped++;
-                        } else {
-                            try {
-                                negotiationPort.apply(vacancy.id());
-                                historyPort.markApplied(vacancy.id(), vacancy.company());
-                                excludeIds.add(vacancy.id());
-                                applied++;
-                            } catch (SessionExpiredException e) {
-                                log.error("Сессия истекла, прерываю прогон. Необходима повторная авторизация через /api/auth/start");
-                                throw e;
-                            } catch (Exception e) {
-                                log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
-                                failed++;
-                            }
-                        }
+                for (String id : newIds) {
+                    if (applied >= criteria.limit()) {
+                        log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
+                        break;
+                    }
+                    Vacancy vacancy = vacancyPort.fetchDetail(id);
+                    found++;
+                    if (!vacancyFilter.matches(vacancy, criteria)) {
+                        log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
+                        skipped++;
+                        continue;
+                    }
+                    try {
+                        negotiationPort.apply(vacancy.id());
+                        historyPort.markApplied(vacancy.id(), vacancy.company());
+                        excludeIds.add(vacancy.id());
+                        applied++;
+                    } catch (SessionExpiredException e) {
+                        log.error("Сессия истекла, прерываю прогон. Необходима повторная авторизация через /api/auth/start");
+                        throw e;
+                    } catch (Exception e) {
+                        log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
+                        failed++;
                     }
                 }
 
