@@ -58,7 +58,14 @@ public class ApplyService implements ApplyUseCase {
                         log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
                         break;
                     }
-                    Vacancy vacancy = vacancyPort.fetchDetail(id);
+                    Vacancy vacancy;
+                    try {
+                        vacancy = vacancyPort.fetchDetail(id);
+                    } catch (Exception e) {
+                        log.warn("Не удалось загрузить детали вакансии {}, пропускаем: {}", id, e.getMessage());
+                        failed++;
+                        continue;
+                    }
                     found++;
                     if (!vacancyFilter.matches(vacancy, criteria)) {
                         log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
