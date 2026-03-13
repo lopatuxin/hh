@@ -2,6 +2,7 @@ package pyc.lopatuxin.hh.apply.infrastructure.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 import pyc.lopatuxin.hh.apply.domain.port.out.ApplyHistoryPort;
 
 import java.time.Instant;
@@ -15,21 +16,9 @@ public class JpaApplyHistoryAdapter implements ApplyHistoryPort {
     private final ApplyHistoryRepository repository;
 
     @Override
-    public boolean isApplied(String vacancyId) {
-        return repository.existsById(vacancyId);
-    }
-
-    @Override
-    public void markApplied(String vacancyId, String company) {
+    public void mark(String vacancyId, String company, ApplyStatus status) {
         if (!repository.existsById(vacancyId)) {
-            repository.save(new ApplyHistoryEntity(vacancyId, company, Instant.now(), "APPLIED"));
-        }
-    }
-
-    @Override
-    public void markFiltered(String vacancyId, String company) {
-        if (!repository.existsById(vacancyId)) {
-            repository.save(new ApplyHistoryEntity(vacancyId, company, Instant.now(), "FILTERED"));
+            repository.save(new ApplyHistoryEntity(vacancyId, company, Instant.now(), status));
         }
     }
 

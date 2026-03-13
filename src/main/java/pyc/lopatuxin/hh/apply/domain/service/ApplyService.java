@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyResult;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.model.SessionExpiredException;
@@ -69,14 +70,14 @@ public class ApplyService implements ApplyUseCase {
                     found++;
                     if (!vacancyFilter.matches(vacancy, criteria)) {
                         log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
-                        historyPort.markFiltered(vacancy.id(), vacancy.company());
+                        historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.FILTERED);
                         excludeIds.add(vacancy.id());
                         skipped++;
                         continue;
                     }
                     try {
                         negotiationPort.apply(vacancy.id());
-                        historyPort.markApplied(vacancy.id(), vacancy.company());
+                        historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.APPLIED);
                         excludeIds.add(vacancy.id());
                         applied++;
                     } catch (SessionExpiredException e) {

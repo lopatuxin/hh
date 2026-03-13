@@ -2,11 +2,14 @@ package pyc.lopatuxin.hh.apply.infrastructure.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 
 import java.time.Instant;
 
@@ -18,15 +21,14 @@ import java.time.Instant;
 public class ApplyHistoryEntity {
 
     @Id
-    @Column(name = "vacancy_id")
     private String vacancyId;
 
-    @Column(name = "company")
     private String company;
 
-    @Column(name = "applied_at", nullable = false)
+    @Column(nullable = false)
     private Instant appliedAt;
 
-    @Column(name = "status", nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ApplyStatus status;
 }
