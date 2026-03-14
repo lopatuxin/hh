@@ -67,11 +67,13 @@ public class BrowserAuthService {
         String path = properties.browser().authStatePath();
         log.info("Сохраняю состояние браузера в {}", path);
 
-        current.context().storageState(
-                new BrowserContext.StorageStateOptions().setPath(Paths.get(path))
-        );
-        current.context().close();
-        current.browser().close();
+        try (BrowserContext context = current.context()) {
+            context.storageState(
+                    new BrowserContext.StorageStateOptions().setPath(Paths.get(path))
+            );
+        } finally {
+            current.browser().close();
+        }
 
         log.info("Авторизация сохранена в {}", path);
         return path;

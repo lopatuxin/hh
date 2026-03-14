@@ -4,9 +4,10 @@ import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VacancyPort {
     List<String> collectIds(ApplyCriteria criteria, int page);
-    Vacancy fetchDetail(String id);
+    Optional<Vacancy> fetchDetail(String id);
     List<Vacancy> fetchDetails(List<String> ids);
 }

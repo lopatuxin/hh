@@ -15,6 +15,7 @@ import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -36,65 +37,65 @@ public class ApplyService implements ApplyUseCase {
         }
         try {
             Set<String> excludeIds = new HashSet<>(historyPort.getAllIds());
-            int found = 0;
-            int skipped = 0;
-            int applied = 0;
-            int failed = 0;
+            ApplyProgress progress = new ApplyProgress();
             int page = 0;
 
-            while (applied < criteria.limit()) {
+            while (progress.applied() < criteria.limit()) {
                 List<String> rawPageIds = vacancyPort.collectIds(criteria, page);
                 if (rawPageIds.isEmpty()) {
                     log.info("Страница {} пуста, вакансии закончились", page);
                     break;
                 }
 
-                List<String> newIds = rawPageIds.stream()
-                        .filter(id -> !excludeIds.contains(id))
-                        .toList();
+                List<String> newIds = filterNewIds(rawPageIds, excludeIds);
                 log.info("Страница {}: всего {}, новых {}", page, rawPageIds.size(), newIds.size());
 
                 for (String id : newIds) {
-                    if (applied >= criteria.limit()) {
+                    if (progress.applied() >= criteria.limit()) {
                         log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
                         break;
                     }
-                    Vacancy vacancy;
-                    try {
-                        vacancy = vacancyPort.fetchDetail(id);
-                    } catch (Exception e) {
-                        log.warn("Не удалось загрузить детали вакансии {}, пропускаем: {}", id, e.getMessage());
-                        failed++;
-                        continue;
-                    }
-                    found++;
-                    if (!vacancyFilter.matches(vacancy, criteria)) {
-                        log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
-                        historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.FILTERED);
-                        excludeIds.add(vacancy.id());
-                        skipped++;
-                        continue;
-                    }
-                    try {
-                        negotiationPort.apply(vacancy.id());
-                        historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.APPLIED);
-                        excludeIds.add(vacancy.id());
-                        applied++;
-                    } catch (SessionExpiredException e) {
-                        log.error("Сессия истекла, прерываю прогон. Необходима повторная авторизация через /api/auth/start");
-                        throw e;
-                    } catch (Exception e) {
-                        log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
-                        failed++;
-                    }
+                    processVacancy(id, criteria, excludeIds, progress);
                 }
 
                 page++;
             }
 
-            return new ApplyResult(found, skipped, applied, failed);
+            return progress.toResult();
         } finally {
             running.set(false);
+        }
+    }
+
+    private List<String> filterNewIds(List<String> rawPageIds, Set<String> excludeIds) {
+        return rawPageIds.stream()
+                .filter(id -> !excludeIds.contains(id))
+                .toList();
+    }
+
+    private void processVacancy(String id, ApplyCriteria criteria,
+                                Set<String> excludeIds, ApplyProgress progress) {
+        Optional<Vacancy> optionalVacancy = vacancyPort.fetchDetail(id);
+        if (optionalVacancy.isEmpty()) {
+            progress.recordFetchFailed();
+            return;
+        }
+        Vacancy vacancy = optionalVacancy.get();
+        if (!vacancyFilter.matches(vacancy, criteria)) {
+            log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
+            historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.FILTERED);
+            excludeIds.add(vacancy.id());
+            progress.recordFiltered();
+            return;
+        }
+        try {
+            negotiationPort.apply(vacancy.id());
+            historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.APPLIED);
+            excludeIds.add(vacancy.id());
+            progress.recordApplied();
+        } catch (IllegalStateException e) {
+            log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
+            progress.recordApplyFailed();
         }
     }
 }

@@ -33,12 +33,8 @@ public class VacancyFilter {
             return false;
         }
 
-        if (criteria.experience() != null
-                && !criteria.experience().equals(vacancy.experience())) {
-            return false;
-        }
-
-        return true;
+        return criteria.experience() == null
+                || criteria.experience().equals(vacancy.experience());
     }
 
     private boolean titleMatchesGroups(Vacancy vacancy, ApplyCriteria criteria) {

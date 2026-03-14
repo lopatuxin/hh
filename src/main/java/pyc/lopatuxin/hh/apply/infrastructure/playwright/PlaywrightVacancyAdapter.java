@@ -4,6 +4,7 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.options.WaitUntilState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,12 +76,15 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     @Override
-    public Vacancy fetchDetail(String id) {
+    public Optional<Vacancy> fetchDetail(String id) {
         try (BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
             Page page = context.newPage();
-            return fetchVacancyDetails(page, id);
+            return Optional.of(fetchVacancyDetails(page, id));
+        } catch (PlaywrightException e) {
+            log.warn("Не удалось загрузить детали вакансии {}, пропускаем: {}", id, e.getMessage());
+            return Optional.empty();
         }
     }
 
