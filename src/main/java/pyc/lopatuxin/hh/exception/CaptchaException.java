@@ -1,4 +1,4 @@
-package pyc.lopatuxin.hh.apply.infrastructure.playwright;
+package pyc.lopatuxin.hh.exception;
 
 public class CaptchaException extends RuntimeException {
 

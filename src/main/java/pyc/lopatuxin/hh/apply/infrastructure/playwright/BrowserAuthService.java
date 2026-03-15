@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pyc.lopatuxin.hh.config.HhProperties;
+import pyc.lopatuxin.hh.util.HhConstants;
 
 import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,7 +40,7 @@ public class BrowserAuthService {
         try {
             BrowserContext context = browser.newContext();
             session.set(new AuthSession(browser, context));
-            context.newPage().navigate("https://hh.ru/login");
+            context.newPage().navigate(HhConstants.LOGIN_URL);
             log.info("Браузер открыт, жду авторизации пользователя");
         } catch (Exception e) {
             log.error("Ошибка при открытии браузера авторизации: {}", e.getMessage());

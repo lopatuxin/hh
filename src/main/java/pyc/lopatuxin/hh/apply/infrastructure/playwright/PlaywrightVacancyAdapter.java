@@ -1,6 +1,5 @@
 package pyc.lopatuxin.hh.apply.infrastructure.playwright;
 
-import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -15,11 +14,11 @@ import pyc.lopatuxin.hh.apply.domain.model.Salary;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
-import pyc.lopatuxin.hh.config.HhProperties;
+import pyc.lopatuxin.hh.util.HhConstants;
+import pyc.lopatuxin.hh.util.PageGuards;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -32,18 +31,14 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PlaywrightVacancyAdapter implements VacancyPort {
 
-    private static final String SEARCH_URL = "https://hh.ru/search/vacancy";
     private static final Pattern VACANCY_ID_PATTERN = Pattern.compile("/vacancy/(\\d+)");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d[\\d\\u00a0\\s]*\\d|\\d");
 
-    private final Browser browser;
-    private final HhProperties properties;
+    private final PlaywrightContextFactory contextFactory;
 
     @Override
     public List<String> collectIds(ApplyCriteria criteria, int page) {
-        try (BrowserContext context = browser.newContext(
-                new Browser.NewContextOptions()
-                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
+        try (BrowserContext context = contextFactory.createAuthenticatedContext()) {
 
             Page browserPage = context.newPage();
             String url = buildSearchUrl(criteria, page);
@@ -51,7 +46,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
             browserPage.navigate(url, new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
                     .setTimeout(60000));
-            checkCaptcha(browserPage);
+            PageGuards.checkCaptcha(browserPage);
 
             List<String> ids = new ArrayList<>();
             List<Locator> cards = browserPage.locator("[data-qa='vacancy-serp__vacancy']").all();
@@ -77,9 +72,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
 
     @Override
     public Optional<Vacancy> fetchDetail(String id) {
-        try (BrowserContext context = browser.newContext(
-                new Browser.NewContextOptions()
-                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
+        try (BrowserContext context = contextFactory.createAuthenticatedContext()) {
             Page page = context.newPage();
             return Optional.of(fetchVacancyDetails(page, id));
         } catch (PlaywrightException e) {
@@ -88,29 +81,13 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         }
     }
 
-    @Override
-    public List<Vacancy> fetchDetails(List<String> ids) {
-        try (BrowserContext context = browser.newContext(
-                new Browser.NewContextOptions()
-                        .setStorageStatePath(Paths.get(properties.browser().authStatePath())))) {
-
-            Page page = context.newPage();
-            List<Vacancy> result = new ArrayList<>();
-            for (String id : ids) {
-                result.add(fetchVacancyDetails(page, id));
-            }
-            log.info("Загружено {} вакансий", result.size());
-            return result;
-        }
-    }
-
     private Vacancy fetchVacancyDetails(Page page, String id) {
-        String url = "https://hh.ru/vacancy/" + id;
+        String url = HhConstants.VACANCY_URL + id;
         log.info("Загружаю детали вакансии {}", url);
         page.navigate(url, new Page.NavigateOptions()
                 .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
                 .setTimeout(60000));
-        checkCaptcha(page);
+        PageGuards.checkCaptcha(page);
 
         Locator titleLocator = page.locator("[data-qa='vacancy-title']");
         String title = titleLocator.count() > 0 ? titleLocator.textContent().trim() : "";
@@ -137,7 +114,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
-        StringBuilder url = new StringBuilder(SEARCH_URL).append("?per_page=50");
+        StringBuilder url = new StringBuilder(HhConstants.SEARCH_URL).append("?per_page=50");
 
         if (criteria.keywords() != null && !criteria.keywords().isEmpty()) {
             String text = criteria.keywords().stream()
@@ -163,13 +140,6 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         }
 
         return url.toString();
-    }
-
-    private void checkCaptcha(Page page) {
-        if (page.url().contains("captcha")
-                || page.locator("[data-qa='captcha']").count() > 0) {
-            throw new CaptchaException("Обнаружена капча, страница: " + page.url());
-        }
     }
 
     private Salary parseSalary(Page page) {

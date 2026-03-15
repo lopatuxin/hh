@@ -9,5 +9,4 @@ import java.util.Optional;
 public interface VacancyPort {
     List<String> collectIds(ApplyCriteria criteria, int page);
     Optional<Vacancy> fetchDetail(String id);
-    List<Vacancy> fetchDetails(List<String> ids);
 }
