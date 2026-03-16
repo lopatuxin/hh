@@ -1,6 +1,6 @@
 package pyc.lopatuxin.hh.exception;
 
-public class ApplyButtonNotFoundException extends RuntimeException {
+public class ApplyButtonNotFoundException extends ApplyException {
 
     public ApplyButtonNotFoundException(String message) {
         super(message);

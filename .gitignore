@@ -38,5 +38,6 @@ out/
 
 ### Claude ###
 .claude/
+.superpowers/
 CLAUDE.md
 docs/

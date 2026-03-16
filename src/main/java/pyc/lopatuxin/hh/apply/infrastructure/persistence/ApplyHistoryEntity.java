@@ -28,6 +28,8 @@ public class ApplyHistoryEntity {
     @Column(nullable = false)
     private Instant appliedAt;
 
+    private String url;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApplyStatus status;

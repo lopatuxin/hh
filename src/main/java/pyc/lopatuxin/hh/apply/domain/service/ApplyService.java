@@ -4,14 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
-import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyResult;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
-import pyc.lopatuxin.hh.apply.domain.model.SessionExpiredException;
 import pyc.lopatuxin.hh.apply.domain.port.in.ApplyUseCase;
 import pyc.lopatuxin.hh.apply.domain.port.out.ApplyHistoryPort;
 import pyc.lopatuxin.hh.apply.domain.port.out.NegotiationPort;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
+import pyc.lopatuxin.hh.exception.ApplyException;
+import pyc.lopatuxin.hh.util.HhConstants;
 
 import java.util.HashSet;
 import java.util.List;
@@ -81,20 +82,23 @@ public class ApplyService implements ApplyUseCase {
             return;
         }
         Vacancy vacancy = optionalVacancy.get();
+        String url = HhConstants.VACANCY_URL + vacancy.id();
         if (!vacancyFilter.matches(vacancy, criteria)) {
             log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
-            historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.FILTERED);
+            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.FILTERED);
             excludeIds.add(vacancy.id());
             progress.recordFiltered();
             return;
         }
         try {
             negotiationPort.apply(vacancy.id());
-            historyPort.mark(vacancy.id(), vacancy.company(), ApplyStatus.APPLIED);
+            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.APPLIED);
             excludeIds.add(vacancy.id());
             progress.recordApplied();
-        } catch (IllegalStateException e) {
+        } catch (ApplyException e) {
             log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
+            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.ACTION_REQUIRED);
+            excludeIds.add(vacancy.id());
             progress.recordApplyFailed();
         }
     }
