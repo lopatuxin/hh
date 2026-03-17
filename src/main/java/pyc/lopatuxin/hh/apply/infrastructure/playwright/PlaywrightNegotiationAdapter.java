@@ -3,6 +3,8 @@ package pyc.lopatuxin.hh.apply.infrastructure.playwright;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.PlaywrightException;
+import com.microsoft.playwright.options.WaitUntilState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -31,7 +33,9 @@ public class PlaywrightNegotiationAdapter implements NegotiationPort {
             Page page = context.newPage();
             String url = HhConstants.VACANCY_URL + vacancyId;
             log.info("Открываю вакансию для отклика: {}", url);
-            page.navigate(url);
+            page.navigate(url, new Page.NavigateOptions()
+                    .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                    .setTimeout(60000));
 
             PageGuards.checkCaptcha(page);
             PageGuards.checkSession(page);
@@ -45,6 +49,8 @@ public class PlaywrightNegotiationAdapter implements NegotiationPort {
             verifyApplySucceeded(page, vacancyId);
 
             log.info("Успешно откликнулся на вакансию {}", vacancyId);
+        } catch (PlaywrightException e) {
+            throw new ApplyFailedException("Ошибка Playwright при отклике на вакансию " + vacancyId + ": " + e.getMessage());
         }
     }
 
