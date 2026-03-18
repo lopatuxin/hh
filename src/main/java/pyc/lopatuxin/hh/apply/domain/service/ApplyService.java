@@ -9,6 +9,7 @@ import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.port.in.ApplyUseCase;
 import pyc.lopatuxin.hh.apply.domain.port.out.ApplyHistoryPort;
+import pyc.lopatuxin.hh.apply.domain.port.out.BrowserSessionPort;
 import pyc.lopatuxin.hh.apply.domain.port.out.NegotiationPort;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
 import pyc.lopatuxin.hh.exception.ApplyException;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 public class ApplyService implements ApplyUseCase {
 
+    private final BrowserSessionPort sessionPort;
     private final VacancyPort vacancyPort;
     private final NegotiationPort negotiationPort;
     private final ApplyHistoryPort historyPort;
@@ -36,7 +38,8 @@ public class ApplyService implements ApplyUseCase {
         if (!running.compareAndSet(false, true)) {
             throw new IllegalStateException("Процесс отклика уже запущен");
         }
-        try {
+        try (sessionPort) {
+            sessionPort.open();
             Set<String> excludeIds = new HashSet<>(historyPort.getAllIds());
             ApplyProgress progress = new ApplyProgress();
             int page = 0;
