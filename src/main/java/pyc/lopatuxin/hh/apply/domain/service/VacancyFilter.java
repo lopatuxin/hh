@@ -4,6 +4,7 @@ import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class VacancyFilter {
@@ -90,10 +91,10 @@ public class VacancyFilter {
         if (criteria.salaryFrom() <= 0 || vacancy.salary() == null) {
             return true;
         }
-        Integer salaryValue = vacancy.salary().to() != null
+        BigDecimal salaryValue = vacancy.salary().to() != null
                 ? vacancy.salary().to()
                 : vacancy.salary().from();
-        return salaryValue == null || salaryValue >= criteria.salaryFrom();
+        return salaryValue == null || salaryValue.compareTo(BigDecimal.valueOf(criteria.salaryFrom())) >= 0;
     }
 
 }

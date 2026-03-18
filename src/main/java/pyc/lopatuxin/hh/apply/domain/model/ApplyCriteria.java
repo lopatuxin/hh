@@ -5,7 +5,7 @@ import java.util.List;
 public record ApplyCriteria(
         int areaId,
         int salaryFrom,
-        String currency,
+        Currency currency,
         String experience,
         List<String> keywords,
         List<String> excludedCompanies,

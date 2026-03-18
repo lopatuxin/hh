@@ -1,6 +1,5 @@
 package pyc.lopatuxin.hh.apply.infrastructure.playwright;
 
-import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
@@ -23,19 +22,17 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class PlaywrightNegotiationAdapter implements NegotiationPort {
 
-    private final PlaywrightContextFactory contextFactory;
+    private final PlaywrightSessionHolder sessionHolder;
     private final HhProperties properties;
 
     @Override
     public void apply(String vacancyId) {
-        try (BrowserContext context = contextFactory.createAuthenticatedContext()) {
-
-            Page page = context.newPage();
+        try (Page page = sessionHolder.getContext().newPage()) {
             String url = HhConstants.VACANCY_URL + vacancyId;
             log.info("Открываю вакансию для отклика: {}", url);
             page.navigate(url, new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                    .setTimeout(60000));
+                    .setTimeout(properties.browser().navigationTimeoutMs()));
 
             PageGuards.checkCaptcha(page);
             PageGuards.checkSession(page);

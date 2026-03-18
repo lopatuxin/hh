@@ -1,6 +1,5 @@
 package pyc.lopatuxin.hh.apply.infrastructure.playwright;
 
-import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
@@ -10,15 +9,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
+import pyc.lopatuxin.hh.apply.domain.model.Currency;
 import pyc.lopatuxin.hh.apply.domain.model.Salary;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
+import pyc.lopatuxin.hh.config.HhProperties;
 import pyc.lopatuxin.hh.util.HhConstants;
 import pyc.lopatuxin.hh.util.PageGuards;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,28 +36,26 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     private static final Pattern VACANCY_ID_PATTERN = Pattern.compile("/vacancy/(\\d+)");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d[\\d\\u00a0\\s]*\\d|\\d");
 
-    private final PlaywrightContextFactory contextFactory;
+    private final PlaywrightSessionHolder sessionHolder;
+    private final HhProperties properties;
 
     @Override
     public List<String> collectIds(ApplyCriteria criteria, int page) {
-        try (BrowserContext context = contextFactory.createAuthenticatedContext()) {
-
-            Page browserPage = context.newPage();
+        try (Page browserPage = sessionHolder.getContext().newPage()) {
             String url = buildSearchUrl(criteria, page);
             log.info("Открываю страницу поиска #{}: {}", page + 1, url);
             browserPage.navigate(url, new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                    .setTimeout(60000));
+                    .setTimeout(properties.browser().navigationTimeoutMs()));
             PageGuards.checkCaptcha(browserPage);
+            PageGuards.checkSession(browserPage);
 
             List<String> ids = new ArrayList<>();
             List<Locator> cards = browserPage.locator("[data-qa='vacancy-serp__vacancy']").all();
-            boolean firstCard = true;
+            if (!cards.isEmpty()) {
+                log.debug("HTML карточки: {}", cards.getFirst().innerHTML());
+            }
             for (Locator card : cards) {
-                if (firstCard) {
-                    log.debug("HTML карточки: {}", card.innerHTML());
-                    firstCard = false;
-                }
                 Locator titleLink = card.locator("a[data-qa='serp-item__title']");
                 if (titleLink.count() == 0) continue;
                 String href = titleLink.getAttribute("href");
@@ -72,8 +72,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
 
     @Override
     public Optional<Vacancy> fetchDetail(String id) {
-        try (BrowserContext context = contextFactory.createAuthenticatedContext()) {
-            Page page = context.newPage();
+        try (Page page = sessionHolder.getContext().newPage()) {
             return Optional.of(fetchVacancyDetails(page, id));
         } catch (PlaywrightException e) {
             log.warn("Не удалось загрузить детали вакансии {}, пропускаем: {}", id, e.getMessage());
@@ -86,9 +85,14 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         log.info("Загружаю детали вакансии {}", url);
         page.navigate(url, new Page.NavigateOptions()
                 .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                .setTimeout(60000));
+                .setTimeout(properties.browser().navigationTimeoutMs()));
         PageGuards.checkCaptcha(page);
+        PageGuards.checkSession(page);
 
+        return parseVacancy(page, id);
+    }
+
+    private Vacancy parseVacancy(Page page, String id) {
         Locator titleLocator = page.locator("[data-qa='vacancy-title']");
         String title = titleLocator.count() > 0 ? titleLocator.textContent().trim() : "";
 
@@ -114,32 +118,29 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
-        StringBuilder url = new StringBuilder(HhConstants.SEARCH_URL).append("?per_page=50");
+        var builder = UriComponentsBuilder.fromUriString(HhConstants.SEARCH_URL)
+                .queryParam("per_page", 50);
 
         if (criteria.keywords() != null && !criteria.keywords().isEmpty()) {
-            String text = criteria.keywords().stream()
-                    .map(kw -> URLEncoder.encode(kw, StandardCharsets.UTF_8))
-                    .reduce((a, b) -> a + "+" + b)
-                    .orElse("");
-            url.append("&text=").append(text);
+            builder.queryParam("text", String.join(" ", criteria.keywords()));
         }
         if (criteria.areaId() > 0) {
-            url.append("&area=").append(criteria.areaId());
+            builder.queryParam("area", criteria.areaId());
         }
         if (criteria.salaryFrom() > 0) {
-            url.append("&salary=").append(criteria.salaryFrom());
+            builder.queryParam("salary", criteria.salaryFrom());
         }
         if (criteria.currency() != null) {
-            url.append("&currency_code=").append(criteria.currency());
+            builder.queryParam("currency_code", criteria.currency());
         }
         if (criteria.experience() != null) {
-            url.append("&experience=").append(criteria.experience());
+            builder.queryParam("experience", criteria.experience());
         }
         if (page > 0) {
-            url.append("&page=").append(page);
+            builder.queryParam("page", page);
         }
 
-        return url.toString();
+        return builder.build().toUriString();
     }
 
     private Salary parseSalary(Page page) {
@@ -149,21 +150,18 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         String text = salaryLocator.textContent();
         if (text == null || text.isBlank()) return null;
 
-        List<Integer> numbers = new ArrayList<>();
+        List<BigDecimal> numbers = new ArrayList<>();
         Matcher m = NUMBER_PATTERN.matcher(text);
         while (m.find()) {
             String numStr = m.group().replaceAll("[\\u00a0\\s]", "");
             try {
-                numbers.add(Integer.parseInt(numStr));
-            } catch (NumberFormatException ignored) {
-                // нечисловые токены пропускаем
+                numbers.add(new BigDecimal(numStr));
+            } catch (NumberFormatException e) {
+                log.debug("Не удалось распарсить число из токена '{}': {}", numStr, e.getMessage());
             }
         }
 
-        String currency = null;
-        if (text.contains("руб") || text.contains("₽")) currency = "RUR";
-        else if (text.contains("USD") || text.contains("$")) currency = "USD";
-        else if (text.contains("EUR") || text.contains("€")) currency = "EUR";
+        Currency currency = Currency.fromText(text);
 
         return switch (numbers.size()) {
             case 0 -> null;
@@ -195,13 +193,17 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
 
     private String getTextOrNull(Page page, String selector) {
         Locator locator = page.locator(selector);
-        if (locator.count() == 0) return null;
+        if (locator.count() == 0) {
+            return null;
+        }
         String text = locator.first().textContent();
         return text != null && !text.isBlank() ? text.trim() : null;
     }
 
     private String extractVacancyId(String href) {
-        if (href == null) return null;
+        if (href == null) {
+            return null;
+        }
         Matcher m = VACANCY_ID_PATTERN.matcher(href);
         return m.find() ? m.group(1) : null;
     }

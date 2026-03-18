@@ -15,6 +15,7 @@ public record HhProperties(
             boolean headless,
             long delayMinMs,
             long delayMaxMs,
-            int maxPerDay
+            int maxPerDay,
+            long navigationTimeoutMs
     ) {}
 }
