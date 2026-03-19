@@ -1,4 +1,4 @@
-package pyc.lopatuxin.hh.apply.domain.model;
+package pyc.lopatuxin.hh.exception;
 
 public class SessionExpiredException extends RuntimeException {
 

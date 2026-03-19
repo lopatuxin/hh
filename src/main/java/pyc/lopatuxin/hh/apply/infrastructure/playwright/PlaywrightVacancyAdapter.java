@@ -9,10 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
-import pyc.lopatuxin.hh.apply.domain.model.Currency;
-import pyc.lopatuxin.hh.apply.domain.model.Salary;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
-import pyc.lopatuxin.hh.apply.domain.model.WorkFormat;
 import pyc.lopatuxin.hh.apply.domain.port.out.VacancyPort;
 import pyc.lopatuxin.hh.config.HhProperties;
 import pyc.lopatuxin.hh.util.HhConstants;
@@ -20,7 +17,6 @@ import pyc.lopatuxin.hh.util.PageGuards;
 
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +30,6 @@ import java.util.regex.Pattern;
 public class PlaywrightVacancyAdapter implements VacancyPort {
 
     private static final Pattern VACANCY_ID_PATTERN = Pattern.compile("/vacancy/(\\d+)");
-    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d[\\d\\u00a0\\s]*\\d|\\d");
 
     private final PlaywrightSessionHolder sessionHolder;
     private final HhProperties properties;
@@ -89,32 +84,7 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         PageGuards.checkCaptcha(page);
         PageGuards.checkSession(page);
 
-        return parseVacancy(page, id);
-    }
-
-    private Vacancy parseVacancy(Page page, String id) {
-        Locator titleLocator = page.locator("[data-qa='vacancy-title']");
-        String title = titleLocator.count() > 0 ? titleLocator.textContent().trim() : "";
-
-        String company = getTextOrNull(page, "[data-qa='vacancy-company-name']");
-
-        Salary salary = parseSalary(page);
-        String area = getTextOrNull(page, "[data-qa='vacancy-view-location']");
-        String experience = getTextOrNull(page, "[data-qa='vacancy-experience']");
-
-        List<String> keySkills = page.locator("[data-qa='bloko-tag__text']")
-                .all().stream()
-                .map(l -> l.textContent().trim())
-                .filter(s -> !s.isBlank())
-                .toList();
-
-        boolean requiresCoverLetter =
-                page.locator("[data-qa='vacancy-response-letter-required']").count() > 0;
-
-        WorkFormat workFormat = parseWorkFormat(page);
-
-        log.info("Вакансия {}: '{}', компания: '{}', формат: {}, сопроводительное обязательно: {}", id, title, company, workFormat, requiresCoverLetter);
-        return new Vacancy(id, title, company, salary, area, experience, keySkills, requiresCoverLetter, workFormat);
+        return VacancyPageParser.parseVacancy(page, id);
     }
 
     private String buildSearchUrl(ApplyCriteria criteria, int page) {
@@ -141,63 +111,6 @@ public class PlaywrightVacancyAdapter implements VacancyPort {
         }
 
         return builder.build().toUriString();
-    }
-
-    private Salary parseSalary(Page page) {
-        Locator salaryLocator = page.locator("[data-qa='vacancy-salary']");
-        if (salaryLocator.count() == 0) return null;
-
-        String text = salaryLocator.textContent();
-        if (text == null || text.isBlank()) return null;
-
-        List<BigDecimal> numbers = new ArrayList<>();
-        Matcher m = NUMBER_PATTERN.matcher(text);
-        while (m.find()) {
-            String numStr = m.group().replaceAll("[\\u00a0\\s]", "");
-            try {
-                numbers.add(new BigDecimal(numStr));
-            } catch (NumberFormatException e) {
-                log.debug("Не удалось распарсить число из токена '{}': {}", numStr, e.getMessage());
-            }
-        }
-
-        Currency currency = Currency.fromText(text);
-
-        return switch (numbers.size()) {
-            case 0 -> null;
-            case 1 -> text.contains("до") ? new Salary(null, numbers.get(0), currency)
-                    : new Salary(numbers.get(0), null, currency);
-            default -> new Salary(numbers.get(0), numbers.get(1), currency);
-        };
-    }
-
-    private WorkFormat parseWorkFormat(Page page) {
-        Locator workFormatsLocator = page.locator("[data-qa='work-formats-text']");
-        if (workFormatsLocator.count() > 0) {
-            String text = workFormatsLocator.textContent().replace('\u00a0', ' ').toLowerCase();
-            if (text.contains("удалённ") || text.contains("удаленн")) {
-                return WorkFormat.REMOTE;
-            }
-            if (text.contains("гибрид")) {
-                return WorkFormat.HYBRID;
-            }
-            if (text.contains("офис") || text.contains("на месте")) {
-                return WorkFormat.OFFICE;
-            }
-        }
-        if (page.locator("[data-qa='vacancy-label-work-schedule-remote']").count() > 0) {
-            return WorkFormat.REMOTE;
-        }
-        return null;
-    }
-
-    private String getTextOrNull(Page page, String selector) {
-        Locator locator = page.locator(selector);
-        if (locator.count() == 0) {
-            return null;
-        }
-        String text = locator.first().textContent();
-        return text != null && !text.isBlank() ? text.trim() : null;
     }
 
     private String extractVacancyId(String href) {

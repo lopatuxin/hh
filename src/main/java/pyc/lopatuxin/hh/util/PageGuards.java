@@ -2,7 +2,7 @@ package pyc.lopatuxin.hh.util;
 
 import com.microsoft.playwright.Page;
 import lombok.experimental.UtilityClass;
-import pyc.lopatuxin.hh.apply.domain.model.SessionExpiredException;
+import pyc.lopatuxin.hh.exception.SessionExpiredException;
 import pyc.lopatuxin.hh.exception.CaptchaException;
 
 /**
