@@ -73,8 +73,9 @@ export function Settings() {
         <h3 className="text-lg font-semibold text-text-primary mb-4">Параметры</h3>
         <div className="space-y-4 max-w-lg">
           <div>
-            <label className="text-sm text-text-secondary mb-1 block">Resume ID</label>
+            <label htmlFor="resumeId" className="text-sm text-text-secondary mb-1 block">Resume ID</label>
             <input
+              id="resumeId"
               type="text"
               value={form.resumeId}
               onChange={(e) => setForm((f) => ({ ...f, resumeId: e.target.value }))}
@@ -83,8 +84,9 @@ export function Settings() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Мин. задержка, мс</label>
+              <label htmlFor="delayMinMs" className="text-sm text-text-secondary mb-1 block">Мин. задержка, мс</label>
               <input
+                id="delayMinMs"
                 type="number"
                 value={form.delayMinMs}
                 onChange={(e) => setForm((f) => ({ ...f, delayMinMs: Number(e.target.value) }))}
@@ -92,8 +94,9 @@ export function Settings() {
               />
             </div>
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Макс. задержка, мс</label>
+              <label htmlFor="delayMaxMs" className="text-sm text-text-secondary mb-1 block">Макс. задержка, мс</label>
               <input
+                id="delayMaxMs"
                 type="number"
                 value={form.delayMaxMs}
                 onChange={(e) => setForm((f) => ({ ...f, delayMaxMs: Number(e.target.value) }))}
@@ -102,8 +105,9 @@ export function Settings() {
             </div>
           </div>
           <div>
-            <label className="text-sm text-text-secondary mb-1 block">Лимит откликов в день</label>
+            <label htmlFor="maxPerDay" className="text-sm text-text-secondary mb-1 block">Лимит откликов в день</label>
             <input
+              id="maxPerDay"
               type="number"
               value={form.maxPerDay}
               onChange={(e) => setForm((f) => ({ ...f, maxPerDay: Number(e.target.value) }))}
@@ -111,7 +115,7 @@ export function Settings() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-text-secondary">Headless режим</label>
+            <span className="text-sm text-text-secondary">Headless режим</span>
             <button
               onClick={() => setForm((f) => ({ ...f, headless: !f.headless }))}
               className={`relative w-11 h-6 rounded-full transition-colors ${

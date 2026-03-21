@@ -8,7 +8,7 @@ interface TagInputProps {
   placeholder?: string
 }
 
-export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
+export function TagInput({ tags, onChange, placeholder }: Readonly<TagInputProps>) {
   const [input, setInput] = useState('')
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -29,10 +29,10 @@ export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5 p-2 bg-bg-card border border-border-card rounded-lg min-h-[42px]">
+    <div className="flex flex-wrap gap-1.5 p-2 bg-bg-card border border-border-card rounded-lg min-h-10.5">
       {tags.map((tag, i) => (
         <span
-          key={i}
+          key={tag}
           className="flex items-center gap-1 px-2 py-0.5 bg-accent/15 text-accent text-xs rounded"
         >
           {tag}
@@ -46,7 +46,7 @@ export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ''}
-        className="flex-1 min-w-[100px] bg-transparent outline-none text-sm text-text-primary placeholder:text-text-secondary"
+        className="flex-1 min-w-25 bg-transparent outline-none text-sm text-text-primary placeholder:text-text-secondary"
       />
     </div>
   )

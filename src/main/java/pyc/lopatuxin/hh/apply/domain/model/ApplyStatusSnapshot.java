@@ -10,8 +10,4 @@ public record ApplyStatusSnapshot(
         int failed,
         List<ProcessedVacancy> processedVacancies
 ) {
-
-    public static ApplyStatusSnapshot idle() {
-        return new ApplyStatusSnapshot(false, 0, 0, 0, 0, List.of());
-    }
 }

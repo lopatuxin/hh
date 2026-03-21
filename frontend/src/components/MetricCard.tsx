@@ -4,7 +4,7 @@ interface MetricCardProps {
   subtitle?: string
 }
 
-export function MetricCard({ title, value, subtitle }: MetricCardProps) {
+export function MetricCard({ title, value, subtitle }: Readonly<MetricCardProps>) {
   return (
     <div className="bg-bg-card border border-border-card rounded-xl p-5">
       <div className="text-sm text-text-secondary mb-1">{title}</div>

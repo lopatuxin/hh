@@ -15,7 +15,7 @@ const config: Record<ApplyStatus, { label: string; className: string }> = {
   },
 }
 
-export function StatusBadge({ status }: { status: ApplyStatus }) {
+export function StatusBadge({ status }: Readonly<{ status: ApplyStatus }>) {
   const { label, className } = config[status]
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${className}`}>

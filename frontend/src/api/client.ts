@@ -5,7 +5,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   if (!res.ok) {
     throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
   }
-  return res.json() as Promise<T>
+  return await res.json() as T
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
@@ -18,7 +18,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     const text = await res.text()
     throw new Error(text || `Ошибка ${res.status}`)
   }
-  return res.json() as Promise<T>
+  return await res.json() as T
 }
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
@@ -30,5 +30,5 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
   }
-  return res.json() as Promise<T>
+  return await res.json() as T
 }

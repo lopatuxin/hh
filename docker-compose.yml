@@ -9,6 +9,24 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hh"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/hh
+      DB_USERNAME: hh
+      DB_PASSWORD: hh
+      HH_RESUME_ID: ${HH_RESUME_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

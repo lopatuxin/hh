@@ -1,5 +1,7 @@
 package pyc.lopatuxin.hh.apply.domain.model;
 
+import jakarta.annotation.Nullable;
+
 import java.util.List;
 
 public enum Currency {
@@ -14,6 +16,7 @@ public enum Currency {
         this.markers = markers;
     }
 
+    @Nullable
     public static Currency fromText(String text) {
         for (Currency currency : values()) {
             for (String marker : currency.markers) {

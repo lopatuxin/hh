@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useApplyStatus, useRunApply, useStopApply } from '@/api/hooks'
 import { TagInput } from '@/components/TagInput'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -14,7 +14,8 @@ export function Launch() {
   const [experience, setExperience] = useState('')
   const [workFormats, setWorkFormats] = useState<WorkFormat[]>([])
   const [excludedCompanies, setExcludedCompanies] = useState<string[]>([])
-  const [requiredTitleGroups, setRequiredTitleGroups] = useState<string[][]>([])
+  const nextGroupId = useRef(0)
+  const [requiredTitleGroups, setRequiredTitleGroups] = useState<{ id: number; tags: string[] }[]>([])
   const [excludedTitleWords, setExcludedTitleWords] = useState<string[]>([])
   const [limit, setLimit] = useState(30)
 
@@ -32,7 +33,7 @@ export function Launch() {
       keywords,
       excludedCompanies,
       workFormats,
-      requiredTitleGroups,
+      requiredTitleGroups: requiredTitleGroups.map((g) => g.tags),
       excludedTitleWords,
       limit,
     }
@@ -50,15 +51,15 @@ export function Launch() {
   }
 
   function addTitleGroup() {
-    setRequiredTitleGroups((prev) => [...prev, []])
+    setRequiredTitleGroups((prev) => [...prev, { id: nextGroupId.current++, tags: [] }])
   }
 
-  function updateTitleGroup(index: number, tags: string[]) {
-    setRequiredTitleGroups((prev) => prev.map((g, i) => (i === index ? tags : g)))
+  function updateTitleGroup(id: number, tags: string[]) {
+    setRequiredTitleGroups((prev) => prev.map((g) => (g.id === id ? { ...g, tags } : g)))
   }
 
-  function removeTitleGroup(index: number) {
-    setRequiredTitleGroups((prev) => prev.filter((_, i) => i !== index))
+  function removeTitleGroup(id: number) {
+    setRequiredTitleGroups((prev) => prev.filter((g) => g.id !== id))
   }
 
   const workFormatLabels: Record<WorkFormat, string> = {
@@ -73,17 +74,18 @@ export function Launch() {
 
       <div className="flex gap-6">
         {/* Форма критериев */}
-        <div className="flex-[3] space-y-4">
+        <div className="flex-3 space-y-4">
           <div className="bg-bg-card border border-border-card rounded-xl p-6 space-y-4">
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Ключевые слова</label>
+              <span className="text-sm text-text-secondary mb-1 block">Ключевые слова</span>
               <TagInput tags={keywords} onChange={setKeywords} placeholder="Введите слово и нажмите Enter" />
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Регион (areaId)</label>
+                <label htmlFor="areaId" className="text-sm text-text-secondary mb-1 block">Регион (areaId)</label>
                 <input
+                  id="areaId"
                   type="number"
                   value={areaId}
                   onChange={(e) => setAreaId(Number(e.target.value))}
@@ -91,8 +93,9 @@ export function Launch() {
                 />
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Зарплата от</label>
+                <label htmlFor="salaryFrom" className="text-sm text-text-secondary mb-1 block">Зарплата от</label>
                 <input
+                  id="salaryFrom"
                   type="number"
                   value={salaryFrom || ''}
                   onChange={(e) => setSalaryFrom(Number(e.target.value))}
@@ -100,8 +103,9 @@ export function Launch() {
                 />
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Валюта</label>
+                <label htmlFor="currency" className="text-sm text-text-secondary mb-1 block">Валюта</label>
                 <select
+                  id="currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value as Currency)}
                   className="w-full bg-bg-card border border-border-card rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
@@ -115,8 +119,9 @@ export function Launch() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Опыт</label>
+                <label htmlFor="experience" className="text-sm text-text-secondary mb-1 block">Опыт</label>
                 <select
+                  id="experience"
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
                   className="w-full bg-bg-card border border-border-card rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
@@ -129,8 +134,9 @@ export function Launch() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Лимит откликов</label>
+                <label htmlFor="limit" className="text-sm text-text-secondary mb-1 block">Лимит откликов</label>
                 <input
+                  id="limit"
                   type="number"
                   value={limit}
                   onChange={(e) => setLimit(Number(e.target.value))}
@@ -140,7 +146,7 @@ export function Launch() {
             </div>
 
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Формат работы</label>
+              <span className="text-sm text-text-secondary mb-1 block">Формат работы</span>
               <div className="flex gap-3">
                 {Object.values(WorkFormat).map((wf) => (
                   <label key={wf} className="flex items-center gap-2 cursor-pointer">
@@ -157,13 +163,13 @@ export function Launch() {
             </div>
 
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Исключённые компании</label>
+              <span className="text-sm text-text-secondary mb-1 block">Исключённые компании</span>
               <TagInput tags={excludedCompanies} onChange={setExcludedCompanies} placeholder="Компания + Enter" />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-text-secondary">Обязательные слова в названии (группы)</label>
+                <span className="text-sm text-text-secondary">Обязательные слова в названии (группы)</span>
                 <button
                   type="button"
                   onClick={addTitleGroup}
@@ -172,18 +178,18 @@ export function Launch() {
                   <Plus className="w-3 h-3" /> Добавить группу
                 </button>
               </div>
-              {requiredTitleGroups.map((group, i) => (
-                <div key={i} className="flex items-start gap-2 mb-2">
+              {requiredTitleGroups.map((group) => (
+                <div key={group.id} className="flex items-start gap-2 mb-2">
                   <div className="flex-1">
                     <TagInput
-                      tags={group}
-                      onChange={(tags) => updateTitleGroup(i, tags)}
-                      placeholder={`Группа ${i + 1}`}
+                      tags={group.tags}
+                      onChange={(tags) => updateTitleGroup(group.id, tags)}
+                      placeholder="Слова группы"
                     />
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeTitleGroup(i)}
+                    onClick={() => removeTitleGroup(group.id)}
                     className="mt-2 text-error hover:text-red-300"
                   >
                     <X className="w-4 h-4" />
@@ -193,7 +199,7 @@ export function Launch() {
             </div>
 
             <div>
-              <label className="text-sm text-text-secondary mb-1 block">Исключённые слова в названии</label>
+              <span className="text-sm text-text-secondary mb-1 block">Исключённые слова в названии</span>
               <TagInput tags={excludedTitleWords} onChange={setExcludedTitleWords} placeholder="Слово + Enter" />
             </div>
 
@@ -221,7 +227,7 @@ export function Launch() {
         </div>
 
         {/* Мониторинг */}
-        <div className="flex-[2]">
+        <div className="flex-2">
           <div className="bg-bg-card border border-border-card rounded-xl p-6">
             <h3 className="text-lg font-semibold text-text-primary mb-4">Мониторинг</h3>
 
@@ -255,7 +261,7 @@ export function Launch() {
                   </div>
                 )}
 
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="space-y-2 max-h-125 overflow-y-auto">
                   {status.processedVacancies.map((v) => (
                     <div
                       key={v.vacancyId}
