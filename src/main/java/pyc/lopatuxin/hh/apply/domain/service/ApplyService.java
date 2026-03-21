@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyCriteria;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyResult;
 import pyc.lopatuxin.hh.apply.domain.model.ApplyStatus;
+import pyc.lopatuxin.hh.apply.domain.model.ApplyStatusSnapshot;
 import pyc.lopatuxin.hh.apply.domain.model.Vacancy;
 import pyc.lopatuxin.hh.apply.domain.port.in.ApplyUseCase;
 import pyc.lopatuxin.hh.apply.domain.port.out.ApplyHistoryPort;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -32,19 +34,27 @@ public class ApplyService implements ApplyUseCase {
     private final ApplyHistoryPort historyPort;
     private final VacancyFilter vacancyFilter;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
+    private volatile ApplyProgress currentProgress = new ApplyProgress();
 
     @Override
     public ApplyResult run(ApplyCriteria criteria) {
         if (!running.compareAndSet(false, true)) {
             throw new IllegalStateException("Процесс отклика уже запущен");
         }
+        stopRequested.set(false);
+        currentProgress = new ApplyProgress();
         try (sessionPort) {
             sessionPort.open();
             Set<String> excludeIds = new HashSet<>(historyPort.getAllIds());
-            ApplyProgress progress = new ApplyProgress();
             int page = 0;
 
-            while (progress.applied() < criteria.limit()) {
+            while (currentProgress.applied() < criteria.limit()) {
+                if (stopRequested.get()) {
+                    log.info("Процесс остановлен по запросу пользователя");
+                    break;
+                }
+
                 List<String> rawPageIds = vacancyPort.collectIds(criteria, page);
                 if (rawPageIds.isEmpty()) {
                     log.info("Страница {} пуста, вакансии закончились", page);
@@ -55,20 +65,37 @@ public class ApplyService implements ApplyUseCase {
                 log.info("Страница {}: всего {}, новых {}", page, rawPageIds.size(), newIds.size());
 
                 for (String id : newIds) {
-                    if (progress.applied() >= criteria.limit()) {
+                    if (stopRequested.get()) {
+                        log.info("Процесс остановлен по запросу пользователя");
+                        break;
+                    }
+                    if (currentProgress.applied() >= criteria.limit()) {
                         log.info("Достигнут лимит откликов ({}), останавливаемся", criteria.limit());
                         break;
                     }
-                    processVacancy(id, criteria, excludeIds, progress);
+                    processVacancy(id, criteria, excludeIds, currentProgress);
                 }
 
                 page++;
             }
 
-            return progress.toResult();
+            return currentProgress.toResult();
         } finally {
             running.set(false);
         }
+    }
+
+    @Override
+    public void stop() {
+        if (running.get()) {
+            stopRequested.set(true);
+            log.info("Запрошена остановка процесса откликов");
+        }
+    }
+
+    @Override
+    public ApplyStatusSnapshot getStatus() {
+        return currentProgress.toSnapshot(running.get());
     }
 
     private List<String> filterNewIds(List<String> rawPageIds, Set<String> excludeIds) {
@@ -88,21 +115,21 @@ public class ApplyService implements ApplyUseCase {
         String url = HhConstants.VACANCY_URL + vacancy.id();
         if (!vacancyFilter.matches(vacancy, criteria)) {
             log.debug("Вакансия {} не прошла фильтр, пропускаем", vacancy.id());
-            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.FILTERED);
+            historyPort.mark(vacancy.id(), vacancy.title(), vacancy.company(), url, ApplyStatus.FILTERED);
             excludeIds.add(vacancy.id());
-            progress.recordFiltered();
+            progress.recordFiltered(vacancy.id(), vacancy.title(), vacancy.company(), vacancy.salary(), "Не соответствует критериям фильтра");
             return;
         }
         try {
             negotiationPort.apply(vacancy.id());
-            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.APPLIED);
+            historyPort.mark(vacancy.id(), vacancy.title(), vacancy.company(), url, ApplyStatus.APPLIED);
             excludeIds.add(vacancy.id());
-            progress.recordApplied();
+            progress.recordApplied(vacancy.id(), vacancy.title(), vacancy.company(), vacancy.salary());
         } catch (ApplyException e) {
             log.warn("Не удалось откликнуться на вакансию {}: {}", vacancy.id(), e.getMessage());
-            historyPort.mark(vacancy.id(), vacancy.company(), url, ApplyStatus.ACTION_REQUIRED);
+            historyPort.mark(vacancy.id(), vacancy.title(), vacancy.company(), url, ApplyStatus.ACTION_REQUIRED);
             excludeIds.add(vacancy.id());
-            progress.recordApplyFailed();
+            progress.recordApplyFailed(vacancy.id(), vacancy.title(), vacancy.company(), vacancy.salary(), e.getMessage());
         }
     }
 }

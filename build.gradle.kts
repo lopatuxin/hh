@@ -40,3 +40,23 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+val buildFrontend by tasks.registering(Exec::class) {
+    workingDir = file("frontend")
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    if (isWindows) {
+        commandLine("cmd", "/c", "npm", "run", "build")
+    } else {
+        commandLine("npm", "run", "build")
+    }
+}
+
+val copyFrontend by tasks.registering(Copy::class) {
+    dependsOn(buildFrontend)
+    from("frontend/dist")
+    into("src/main/resources/static")
+}
+
+tasks.named("processResources") {
+    dependsOn(copyFrontend)
+}

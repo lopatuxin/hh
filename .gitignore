@@ -39,6 +39,11 @@ out/
 ### Playwright ###
 auth.json
 
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+src/main/resources/static/
+
 ### Claude ###
 .claude/
 .superpowers/

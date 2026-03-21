@@ -23,6 +23,8 @@ public class ApplyHistoryEntity {
     @Id
     private String vacancyId;
 
+    private String title;
+
     private String company;
 
     @Column(nullable = false)
