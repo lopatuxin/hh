@@ -1,28 +1,31 @@
-import { useState, useEffect } from 'react'
-import { useSettings, useUpdateSettings, useAuthStatus, useStartAuth, useSaveAuth } from '@/api/hooks'
+import { useState } from 'react'
+import { useSettings, useUpdateSettings, useAuthStatus, useStartAuth } from '@/api/hooks'
 import type { SettingsDto } from '@/types'
 import { Monitor, Save } from 'lucide-react'
+import AuthModal from '../components/AuthModal'
 
 export function Settings() {
   const { data: settings } = useSettings()
   const { data: authStatus } = useAuthStatus()
   const updateMutation = useUpdateSettings()
   const startAuth = useStartAuth()
-  const saveAuth = useSaveAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
-  const [form, setForm] = useState<SettingsDto>({
+  const defaultForm: SettingsDto = {
     resumeId: '',
     delayMinMs: 10000,
     delayMaxMs: 45000,
     maxPerDay: 50,
-    headless: true,
-  })
+  }
+  const [form, setForm] = useState<SettingsDto>(settings ?? defaultForm)
 
-  useEffect(() => {
+  const [prevSettings, setPrevSettings] = useState(settings)
+  if (settings !== prevSettings) {
+    setPrevSettings(settings)
     if (settings) {
       setForm(settings)
     }
-  }, [settings])
+  }
 
   function handleSave() {
     updateMutation.mutate(form)
@@ -50,20 +53,12 @@ export function Settings() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => startAuth.mutate()}
+            onClick={() => startAuth.mutate(undefined, { onSuccess: () => setShowAuthModal(true) })}
             disabled={startAuth.isPending}
             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors disabled:opacity-50"
           >
             <Monitor className="w-4 h-4" />
-            Открыть браузер
-          </button>
-          <button
-            onClick={() => saveAuth.mutate()}
-            disabled={saveAuth.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            Сохранить сессию
+            Авторизоваться
           </button>
         </div>
       </div>
@@ -114,21 +109,6 @@ export function Settings() {
               className="w-full bg-bg-content border border-border-card rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-text-secondary">Headless режим</span>
-            <button
-              onClick={() => setForm((f) => ({ ...f, headless: !f.headless }))}
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                form.headless ? 'bg-accent' : 'bg-white/20'
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  form.headless ? 'translate-x-5.5' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </div>
           <button
             onClick={handleSave}
             disabled={updateMutation.isPending}
@@ -142,6 +122,8 @@ export function Settings() {
           )}
         </div>
       </div>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </div>
   )
 }
