@@ -8,8 +8,13 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import pyc.lopatuxin.hh.apply.repository.BrowserSessionEntity;
+import pyc.lopatuxin.hh.apply.repository.BrowserSessionRepository;
+import pyc.lopatuxin.hh.apply.service.VncService;
 import pyc.lopatuxin.hh.util.HhConstants;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -17,60 +22,99 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class BrowserAuthService {
 
-    private record AuthSession(Browser browser, BrowserContext context) {}
+    private record AuthSession(Playwright playwright, Browser browser, BrowserContext context) {}
 
-    private final Playwright playwright;
+    private final VncService vncService;
+    private final BrowserSessionRepository sessionRepository;
     private final AtomicReference<AuthSession> session = new AtomicReference<>();
 
     public void start() {
-        AuthSession old = session.getAndSet(null);
-        if (old != null) {
-            log.info("Закрываю предыдущую сессию авторизации");
-            old.context().close();
-            old.browser().close();
-        }
+        cancel();
 
-        log.info("Открываю браузер для авторизации на hh.ru");
-        Browser browser = playwright.chromium().launch(
-                new BrowserType.LaunchOptions().setHeadless(false)
-        );
+        log.info("Запускаю VNC и браузер для авторизации на hh.ru");
         try {
+            vncService.start(this::cancel);
+
+            Playwright playwright = Playwright.create();
+            Map<String, String> env = new HashMap<>(System.getenv());
+            env.put("DISPLAY", vncService.getDisplay());
+            Browser browser = playwright.chromium().launch(
+                    new BrowserType.LaunchOptions()
+                            .setHeadless(false)
+                            .setEnv(env)
+            );
             BrowserContext context = browser.newContext();
-            session.set(new AuthSession(browser, context));
+            session.set(new AuthSession(playwright, browser, context));
             context.newPage().navigate(HhConstants.LOGIN_URL);
-            log.info("Браузер открыт, жду авторизации пользователя");
+
+            log.info("Браузер открыт на виртуальном дисплее, жду авторизации пользователя");
         } catch (Exception e) {
-            log.error("Ошибка при открытии браузера авторизации: {}", e.getMessage());
-            browser.close();
-            throw e;
+            log.error("Ошибка при запуске авторизации: {}", e.getMessage());
+            closeAuthSession();
+            vncService.stop();
+            throw new RuntimeException("Не удалось запустить браузер авторизации", e);
         }
     }
 
-    @PreDestroy
-    public void cleanup() {
-        AuthSession current = session.getAndSet(null);
-        if (current != null) {
-            log.info("Закрываю незавершённую сессию авторизации при остановке приложения");
-            current.context().close();
-            current.browser().close();
-        }
-    }
-
-    public String save() {
+    public void save() {
         AuthSession current = session.getAndSet(null);
         if (current == null) {
             throw new IllegalStateException("Браузер авторизации не запущен. Сначала вызовите /api/auth/start");
         }
 
-        log.info("Сохраняю состояние браузера");
+        log.info("Сохраняю сессию авторизации в БД");
+        try {
+            String stateJson = current.context().storageState();
 
-        try (BrowserContext context = current.context()) {
-            context.storageState();
+            BrowserSessionEntity entity = sessionRepository.findTopByOrderByUpdatedAtDesc()
+                    .orElseGet(() -> new BrowserSessionEntity(stateJson));
+            entity.setStateJson(stateJson);
+            entity.setUpdatedAt(java.time.Instant.now());
+            sessionRepository.save(entity);
+
+            log.info("Сессия авторизации сохранена в БД");
         } finally {
-            current.browser().close();
+            closeSession(current);
+            vncService.stop();
         }
+    }
 
-        log.info("Авторизация сохранена");
-        return "";
+    public void cancel() {
+        AuthSession current = session.getAndSet(null);
+        if (current != null) {
+            log.info("Отмена авторизации — закрываю браузер без сохранения");
+            closeSession(current);
+        }
+        vncService.stop();
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        cancel();
+    }
+
+    private void closeSession(AuthSession authSession) {
+        try {
+            authSession.context().close();
+        } catch (Exception e) {
+            log.debug("Ошибка при закрытии контекста: {}", e.getMessage());
+        }
+        try {
+            authSession.browser().close();
+        } catch (Exception e) {
+            log.debug("Ошибка при закрытии браузера: {}", e.getMessage());
+        }
+        try {
+            authSession.playwright().close();
+        } catch (Exception e) {
+            log.debug("Ошибка при закрытии Playwright: {}", e.getMessage());
+        }
+    }
+
+    private void closeAuthSession() {
+        AuthSession current = session.getAndSet(null);
+        if (current != null) {
+            closeSession(current);
+        }
     }
 }
