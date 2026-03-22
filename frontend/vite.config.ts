@@ -11,10 +11,17 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8080',
         changeOrigin: true,
+      },
+      '/vnc': {
+        target: process.env.VITE_VNC_TARGET || 'http://localhost:6080',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/vnc/, ''),
+        ws: true,
       },
     },
   },
