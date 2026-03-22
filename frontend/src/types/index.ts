@@ -111,7 +111,6 @@ export interface SettingsDto {
   delayMinMs: number
   delayMaxMs: number
   maxPerDay: number
-  headless: boolean
 }
 
 export interface AuthStatusResponse {

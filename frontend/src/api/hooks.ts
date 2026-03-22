@@ -116,3 +116,13 @@ export function useSaveAuth() {
     },
   })
 }
+
+export function useCancelAuth() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiPost<unknown>('/auth/cancel'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['auth-status'] })
+    },
+  })
+}
