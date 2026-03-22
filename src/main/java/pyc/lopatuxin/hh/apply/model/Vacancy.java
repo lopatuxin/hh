@@ -1,0 +1,16 @@
+package pyc.lopatuxin.hh.apply.model;
+
+import java.util.List;
+
+public record Vacancy(
+        String id,
+        String title,
+        String company,
+        Salary salary,
+        String area,
+        String experience,
+        List<String> keySkills,
+        boolean requiresCoverLetter,
+        WorkFormat workFormat
+) {
+}

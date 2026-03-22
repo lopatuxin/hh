@@ -2,7 +2,7 @@ package pyc.lopatuxin.hh.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import pyc.lopatuxin.hh.apply.infrastructure.web.SettingsDto;
+import pyc.lopatuxin.hh.apply.dto.SettingsDto;
 
 import java.util.concurrent.atomic.AtomicReference;
 
