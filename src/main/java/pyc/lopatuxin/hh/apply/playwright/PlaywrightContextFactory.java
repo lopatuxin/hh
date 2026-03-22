@@ -4,21 +4,22 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pyc.lopatuxin.hh.apply.repository.BrowserSessionEntity;
+import pyc.lopatuxin.hh.apply.repository.BrowserSessionRepository;
 
-/**
- * Фабрика для создания аутентифицированных контекстов Playwright.
- * Вызывающий код отвечает за закрытие контекста (try-with-resources).
- */
 @Component
 @RequiredArgsConstructor
 public class PlaywrightContextFactory {
 
     private final Browser browser;
+    private final BrowserSessionRepository sessionRepository;
 
-    /**
-     * Создаёт {@link BrowserContext} с загруженным состоянием авторизации.
-     */
     public BrowserContext createAuthenticatedContext() {
-        return browser.newContext();
+        BrowserSessionEntity session = sessionRepository.findTopByOrderByUpdatedAtDesc()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Сессия авторизации не найдена. Необходимо авторизоваться через /api/auth/start"));
+
+        return browser.newContext(new Browser.NewContextOptions()
+                .setStorageState(session.getStateJson()));
     }
 }
