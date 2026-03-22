@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hh
+      POSTGRES_USER: hh
+      POSTGRES_PASSWORD: hh
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hh"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./build.gradle.kts:/app/build.gradle.kts
+      - ./settings.gradle.kts:/app/settings.gradle.kts
+      - ./gradlew:/app/gradlew
+      - ./gradle:/app/gradle
+      - gradle-cache:/root/.gradle
+      - backend-build:/app/build
+      - playwright-cache:/root/.cache/ms-playwright
+    ports:
+      - "8080:8080"
+      - "6080:6080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/hh
+      DB_USERNAME: hh
+      DB_PASSWORD: hh
+      HH_RESUME_ID: ${HH_RESUME_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "./gradlew bootRun -x buildFrontend -x copyFrontend"]
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./src
+          target: /app/src
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_TARGET: http://backend:8080
+      VITE_VNC_TARGET: http://backend:6080
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  postgres_data:
+  gradle-cache:
+  backend-build:
+  playwright-cache:
+  frontend_node_modules:

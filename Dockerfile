@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
     libpango-1.0-0 libasound2t64 libxshmfence1 libxfixes3 libcairo2 \
     fonts-liberation \
+    xvfb x11vnc novnc websockify \
     && rm -rf /var/lib/apt/lists/*
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
