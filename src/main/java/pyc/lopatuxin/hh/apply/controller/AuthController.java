@@ -28,8 +28,8 @@ public class AuthController {
 
     @PostMapping("/save")
     public ResponseEntity<AuthResponse> save() {
-        String path = browserAuthService.save();
-        return ResponseEntity.ok(AuthResponse.saved(path));
+        browserAuthService.save();
+        return ResponseEntity.ok(AuthResponse.saved());
     }
 
     @GetMapping("/status")
