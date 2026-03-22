@@ -26,14 +26,13 @@ public class MutableSettingsHolder {
                 defaults.resumeId(),
                 defaults.browser().delayMinMs(),
                 defaults.browser().delayMaxMs(),
-                defaults.browser().maxPerDay(),
-                defaults.browser().headless()
+                defaults.browser().maxPerDay()
         );
     }
 
     public void updateSettings(SettingsDto dto) {
-        log.info("Обновлены настройки: resumeId={}, delayMin={}, delayMax={}, maxPerDay={}, headless={}",
-                dto.resumeId(), dto.delayMinMs(), dto.delayMaxMs(), dto.maxPerDay(), dto.headless());
+        log.info("Обновлены настройки: resumeId={}, delayMin={}, delayMax={}, maxPerDay={}",
+                dto.resumeId(), dto.delayMinMs(), dto.delayMaxMs(), dto.maxPerDay());
         override.set(dto);
     }
 }

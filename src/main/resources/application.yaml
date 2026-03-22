@@ -19,8 +19,6 @@ logging:
 hh:
   resume-id: ${HH_RESUME_ID}
   browser:
-    auth-state-path: auth.json
-    headless: true
     delay-min-ms: 10000
     delay-max-ms: 45000
     max-per-day: 50

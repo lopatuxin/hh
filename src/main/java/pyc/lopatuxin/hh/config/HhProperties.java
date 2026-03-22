@@ -11,8 +11,6 @@ public record HhProperties(
         @NotBlank String resumeId
 ) {
     public record Browser(
-            String authStatePath,
-            boolean headless,
             long delayMinMs,
             long delayMaxMs,
             int maxPerDay,

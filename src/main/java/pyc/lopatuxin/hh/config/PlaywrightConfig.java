@@ -3,7 +3,6 @@ package pyc.lopatuxin.hh.config;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Playwright;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,13 +11,10 @@ import org.springframework.context.annotation.Configuration;
  * <p>
  * Создаёт управляемые Spring-контейнером бины {@link Playwright} и {@link Browser},
  * которые автоматически закрываются при остановке приложения ({@code destroyMethod = "close"}).
- * Режим запуска браузера (headless/headed) определяется настройкой {@code hh.browser.headless}.
+ * Браузер всегда запускается в headless-режиме.
  */
 @Configuration
-@RequiredArgsConstructor
 public class PlaywrightConfig {
-
-    private final HhProperties properties;
 
     /**
      * Создаёт экземпляр {@link Playwright} — точку входа для управления браузерами.
@@ -31,7 +27,7 @@ public class PlaywrightConfig {
     }
 
     /**
-     * Запускает браузер Chromium с настройками из {@link HhProperties}.
+     * Запускает браузер Chromium в headless-режиме.
      *
      * @param playwright экземпляр Playwright для запуска браузера
      * @return экземпляр браузера Chromium
@@ -39,7 +35,7 @@ public class PlaywrightConfig {
     @Bean(destroyMethod = "close")
     public Browser browser(Playwright playwright) {
         return playwright.chromium().launch(
-                new BrowserType.LaunchOptions().setHeadless(properties.browser().headless())
+                new BrowserType.LaunchOptions().setHeadless(true)
         );
     }
 }

@@ -4,7 +4,6 @@ public record SettingsDto(
         String resumeId,
         long delayMinMs,
         long delayMaxMs,
-        int maxPerDay,
-        boolean headless
+        int maxPerDay
 ) {
 }

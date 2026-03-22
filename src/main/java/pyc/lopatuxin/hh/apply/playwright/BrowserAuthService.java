@@ -8,10 +8,8 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import pyc.lopatuxin.hh.config.HhProperties;
 import pyc.lopatuxin.hh.util.HhConstants;
 
-import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -22,7 +20,6 @@ public class BrowserAuthService {
     private record AuthSession(Browser browser, BrowserContext context) {}
 
     private final Playwright playwright;
-    private final HhProperties properties;
     private final AtomicReference<AuthSession> session = new AtomicReference<>();
 
     public void start() {
@@ -65,18 +62,15 @@ public class BrowserAuthService {
             throw new IllegalStateException("Браузер авторизации не запущен. Сначала вызовите /api/auth/start");
         }
 
-        String path = properties.browser().authStatePath();
-        log.info("Сохраняю состояние браузера в {}", path);
+        log.info("Сохраняю состояние браузера");
 
         try (BrowserContext context = current.context()) {
-            context.storageState(
-                    new BrowserContext.StorageStateOptions().setPath(Paths.get(path))
-            );
+            context.storageState();
         } finally {
             current.browser().close();
         }
 
-        log.info("Авторизация сохранена в {}", path);
-        return path;
+        log.info("Авторизация сохранена");
+        return "";
     }
 }
