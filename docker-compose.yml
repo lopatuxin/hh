@@ -19,6 +19,7 @@ services:
     build: .
     ports:
       - "8080:8080"
+      - "6080:6080"
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/hh
       DB_USERNAME: hh

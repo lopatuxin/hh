@@ -21,13 +21,20 @@ RUN ./gradlew bootJar -x test -x buildFrontend -x copyFrontend --no-daemon
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=backend /app/build/libs/hh-*-SNAPSHOT.jar app.jar
-# Playwright требует системные зависимости для Chromium
+# Playwright системные зависимости + VNC-стек + Node.js для установки браузера
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
     libpango-1.0-0 libasound2t64 libxshmfence1 libxfixes3 libcairo2 \
     fonts-liberation \
     xvfb x11vnc novnc websockify \
+    nodejs npm \
     && rm -rf /var/lib/apt/lists/*
-EXPOSE 8080
+
+# Предустановка Chromium для Playwright — убирает ~17сек задержку при первом запуске
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+RUN npx -y playwright@1.51.0 install chromium \
+    && apt-get purge -y nodejs npm && apt-get autoremove -y
+
+EXPOSE 8080 6080
 ENTRYPOINT ["java", "-jar", "app.jar"]

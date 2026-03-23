@@ -49,7 +49,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
           </div>
         </div>
         <iframe
-          src="/vnc/vnc_lite.html?autoconnect=true&resize=scale"
+          src={`/vnc/vnc_lite.html?autoconnect=true&resize=scale&host=${window.location.hostname}&port=6080`}
           className="flex-1 w-full border-0"
           title="hh.ru авторизация"
         />
