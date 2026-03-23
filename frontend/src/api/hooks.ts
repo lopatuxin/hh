@@ -102,7 +102,7 @@ export function useStartAuth() {
   return useMutation({
     mutationFn: () => apiPost<unknown>('/auth/start'),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['auth-status'] })
+      return qc.invalidateQueries({ queryKey: ['auth-status'] })
     },
   })
 }
@@ -112,7 +112,7 @@ export function useSaveAuth() {
   return useMutation({
     mutationFn: () => apiPost<unknown>('/auth/save'),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['auth-status'] })
+      return qc.invalidateQueries({ queryKey: ['auth-status'] })
     },
   })
 }
@@ -122,7 +122,7 @@ export function useCancelAuth() {
   return useMutation({
     mutationFn: () => apiPost<unknown>('/auth/cancel'),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['auth-status'] })
+      return qc.invalidateQueries({ queryKey: ['auth-status'] })
     },
   })
 }
