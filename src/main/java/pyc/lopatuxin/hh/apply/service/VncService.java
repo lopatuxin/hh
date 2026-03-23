@@ -92,7 +92,10 @@ public class VncService {
 
     private void startX11vnc() throws IOException {
         x11vncProcess = new ProcessBuilder(
-                "x11vnc", "-display", DISPLAY, "-nopw", "-forever", "-quiet"
+                "x11vnc", "-display", DISPLAY, "-nopw", "-forever", "-quiet",
+                "-ncache", "10", "-ncache_cr",
+                "-wireframe", "-speeds", "lan",
+                "-threads"
         ).redirectOutput(ProcessBuilder.Redirect.DISCARD)
          .redirectError(ProcessBuilder.Redirect.DISCARD)
          .start();
