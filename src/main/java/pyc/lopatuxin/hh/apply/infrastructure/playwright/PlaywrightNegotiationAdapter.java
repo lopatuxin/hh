@@ -76,10 +76,16 @@ public class PlaywrightNegotiationAdapter implements NegotiationPort {
 
         Locator responseButton = page.locator("[data-qa='vacancy-response-link-top']");
         if (responseButton.count() == 0) {
+            log.debug("Кнопка отклика исчезла после нажатия — отклик успешен для вакансии {}", vacancyId);
             return;
         }
 
         String buttonText = responseButton.first().textContent();
+        String ariaDisabled = responseButton.first().getAttribute("aria-disabled");
+        String className = responseButton.first().getAttribute("class");
+        log.debug("Состояние кнопки после отклика на вакансию {}: text='{}', aria-disabled='{}', class='{}'",
+                vacancyId, buttonText, ariaDisabled, className);
+
         if (buttonText != null && buttonText.toLowerCase().contains("откликнулись")) {
             return;
         }
